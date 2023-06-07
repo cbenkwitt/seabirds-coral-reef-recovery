@@ -1,0 +1,342 @@
+---
+title: "coral_group_recovery_analysis"
+author: "CEB"
+date: '2023-05-12'
+output: html_document
+---
+
+#load packages
+```{r}
+library(tidyverse)
+library(vegan)
+library(cowplot)
+library(brms)
+library(jtools)
+library(tidybayes)
+library(emmeans)
+```
+
+
+#load data
+```{r}
+#benthic data: 
+load("../data/R_data/coral_group_data.Rdata")
+uvc_dat_acrop_wide_prop #acropora only, by transect, proportion, for brms
+uvc_dat_corals_group_isl_wide #all corals, by island, by groupings
+
+```
+
+#Acropora cover through time brms analysis:
+```{r}
+
+#add a constant so can avoid 0s and use beta----
+#from Douma and Weedon 2019 (Appendix S3)
+#136 = length(x) = total number of samples
+
+transform01 <- function(x) {
+  (x * (136 - 1) + 0.5) / (136)
+}
+
+
+uvc_dat_corals_genus_wide_prop_scale2<-
+  uvc_dat_acrop_wide_prop %>%
+  mutate_at(6, transform01)
+uvc_dat_corals_genus_wide_prop_scale2
+
+
+#######run model -----
+#keep default prior - sampling worked better. 
+acrop_mod_beta <- brm(Acropora ~ Treatment*Year + (1|Atoll/Island),                   
+     family = Beta(),
+                data=uvc_dat_corals_genus_wide_prop_scale2,
+              iter = 3000, warmup = 1000, cores=4, chains = 4, 
+             # sample_prior="yes",
+             control = list(adapt_delta = 0.999, max_treedepth = 15),
+                file = "../output/brms/acrop_mod_beta")
+print(acrop_mod_beta) #no issues
+
+plot(acrop_mod_beta, ask = FALSE)
+pp_check(acrop_mod_beta) #look sgood
+
+
+#Extract estimates----
+
+#####to report median estimates for each group, on response scale: 
+acrop_mod_beta %>% 
+  emmeans(~ Treatment|Year,
+          type = "response") 
+#definite decrease to 2018, then increase in 2021. 
+#relative increase in cover = 
+(0.2187 - 0.0904)/0.0904 #142% birdy
+(0.1579 - 0.0736)/0.0736 #115% ratty
+
+#times difference bidry 2015 vs 2021: 
+(0.2187- 0.1316)/0.1316
+(0.1579- 0.1578)/0.1578
+
+acrop_mod_beta %>% 
+  emmeans(~ Year,
+          type = "response") 
+
+#####to report estimates of % difference between treatment-year combos, on response scale: 
+acrop_mod_beta %>% 
+  emmeans(~ Treatment*Year,
+          at = list(Treatment = c("Ratty", "Birdy")),
+          epred = TRUE,
+          re_formula = NA) %>% 
+    contrast(method = "revpairwise") 
+
+# Birdy Year2015 - Ratty Year2015 -0.01904  -0.16454   0.09474
+# Birdy Year2018 - Ratty Year2018  0.01269  -0.07765   0.12475
+# Birdy Year2021 - Ratty Year2021  0.04799  -0.07058   0.20833
+
+# Ratty Year2018 - Ratty Year2015 -0.07894  -0.21172  -0.00347
+# Ratty Year2021 - Ratty Year2015  0.00113  -0.07098   0.06631
+# Ratty Year2021 - Ratty Year2018  0.08172   0.00233   0.21218
+
+# Birdy Year2018 - Birdy Year2015 -0.03616  -0.13821   0.01929
+# Birdy Year2021 - Birdy Year2015  0.07723   0.00121   0.18615
+# Birdy Year2021 - Birdy Year2018  0.12229   0.00999   0.26407
+
+
+
+#####to report odds ratios (because beta regression): 
+acrop_mod_beta %>% 
+   emmeans(~ Treatment|Year,
+          type = "response") %>%
+  contrast("pairwise")
+#within each year, overlaps 1
+
+acrop_mod_beta %>% 
+   emmeans(~ Year|Treatment,
+          type = "response") %>%
+  contrast("revpairwise")
+#birdy 2021 higher than 2015 (and 2018)
+#ratty 2021 higher than 2018, but same as 2015. 
+
+
+
+
+#to report raw estimates of % difference between treatment-year combos, on response scale: 
+acrop_mod_beta %>% 
+  emmeans(~ Treatment*Year,
+          at = list(Treatment = c("Ratty")),
+          epred = TRUE,
+          re_formula = NA) %>% 
+    contrast(method = "revpairwise") 
+#so there is a 7.9% decrease in Acropora from 2015 to 2018, then a 8.2% increase 2018 to 2021
+#2021 and 2015 similar: 0.1% difference
+
+
+acrop_mod_beta %>% 
+  emmeans(~ Treatment*Year,
+          at = list(Treatment = c("Birdy")),
+          epred = TRUE,
+          re_formula = NA) %>% 
+    contrast(method = "revpairwise") 
+#so there is a 3.6% decrease in Acropora from 2015 to 2018, then 12.2% increase 2018 to 2021
+#7.7% higher in 2021 than 2015 - so actually higher*
+
+#compare treatments within each year:
+acrop_mod_beta %>% 
+  emmeans(~ Treatment*Year,
+          at = list(Year = c("2015")),
+          epred = TRUE,
+          re_formula = NA) %>% 
+    contrast(method = "revpairwise") 
+#no difference
+
+acrop_mod_beta %>% 
+  emmeans(~ Treatment*Year,
+          at = list(Year = c("2018")),
+          epred = TRUE,
+          re_formula = NA) %>% 
+    contrast(method = "revpairwise") 
+#no difference
+
+acrop_mod_beta %>% 
+  emmeans(~ Treatment*Year,
+          at = list(Year = c("2021")),
+          epred = TRUE,
+          re_formula = NA) %>% 
+    contrast(method = "revpairwise") 
+#no difference
+
+
+
+
+```
+
+
+#Plot Acropora results
+```{r}
+pred_acrop_beta<-
+  acrop_mod_beta %>% 
+  epred_draws(newdata = expand_grid(Treatment = c("Birdy", "Ratty"), Year = c(2015, 2018, 2021)), 
+                  re_formula=NA) %>%
+  mutate(Treatment_Year = str_c(Treatment, Year, sep ="_"))
+
+med_pred_acrop<-
+  pred_acrop_beta %>%
+  group_by(Treatment, Year)%>%
+  summarize(med_prediction = median(.epred))%>%
+  mutate( Year = as.factor(Year), 
+         Treatment = as.factor(Treatment))
+
+
+acrop_plot_mult_hdis<-
+pred_acrop_beta %>%
+  mutate(Year = as.factor(Year), Treatment = as.factor(Treatment))%>%
+  ggplot(aes(x = Year, y = .epred, color = Treatment, fill = Treatment, shape = Treatment)) +
+  stat_pointinterval(point_interval=median_hdi, .width=c(.9, .7), fatten_point = 2, interval_alpha = 0.2, position = position_dodge(width = .05)) +
+    geom_line(data = med_pred_acrop, aes(x = Year, y =med_prediction, group = Treatment), alpha = .5, position = position_dodge(width = .05))+
+ # geom_vline(xintercept = 0, linetype = "dashed") +
+ # ylim(c(0,.75))+
+  ylab("proportional Acropora coral cover")+
+scale_color_manual(values = c("#0067A5", "#BE0032"),
+                                            breaks=c("Birdy",  "Ratty"),
+                      labels=c("seabird islands",  "rat islands"),
+                    name = "" )+
+  scale_fill_manual(values = c("#0067A5", "#BE0032"),
+                                            breaks=c("Birdy",  "Ratty"),
+                      labels=c("seabird islands",  "rat islands"),
+                    name = "" )+ 
+    scale_shape_manual(values = c(19, 15),
+                    breaks=c("Birdy",  "Ratty"),
+                      labels=c("seabird islands",  "rat islands"),
+                    name = "" )+
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), # remove gridlines
+        panel.grid.minor = element_blank(), #remove gridlines
+        strip.background = element_blank(), 
+        legend.position = c(.5, .9),  
+        rect = element_rect(fill = "transparent"),  
+        plot.background = element_rect(fill = "transparent", color = NA)) 
+acrop_plot_mult_hdis
+
+```
+
+
+
+##Coral Groupings NMDS---------
+```{r}
+
+#make community matrix:
+uvc_dat_corals_group_isl_wide_sp<-
+  uvc_dat_corals_group_isl_wide %>%
+  select(-c(Year, Atoll, Island, Treatment)) 
+
+##run NMDS-----
+nmds_coral_group =metaMDS(uvc_dat_corals_group_isl_wide_sp, trymax=50, k=2, autotransform=FALSE, distance = "bray")
+#note: autotransform=FALSE to keep consistent with GCB paper
+
+nmds_coral_group$stress # stress = 0.1526027 - seems fine
+
+
+##Extract site and nmds_spp and ggplot--------
+spp.sc_coral_group <- scores(nmds_coral_group, display = "species", shrink = FALSE) 
+spp.sc_coral_group
+site.sc_coral_group <- scores(nmds_coral_group, display = "sites", shrink = FALSE) 
+site.sc_coral_group
+
+#merge site.sc with metadata from dataframe
+nmds_coral_group_site_scores<-
+  bind_cols(uvc_dat_corals_group_isl_wide_ty[1:5],
+                    as_tibble(site.sc_coral_group))
+
+#extract species scores
+species.scores_coral_group <- as.data.frame(scores(nmds_coral_group, "species"))  #Using the scores function from vegan to extract the species scores and convert to a data.frame
+species.scores_coral_group<-
+  species.scores_coral_group%>%
+  rownames_to_column(var="Species") # create a column of species, from the rownames of species.scores
+head(species.scores_coral_group)  #look at the data
+
+
+#get convex hulls for polygons
+hull_nr2015<-nmds_coral_group_site_scores[nmds_coral_group_site_scores$Treatment_Year == "Birdy_2015", ][chull(nmds_coral_group_site_scores[nmds_coral_group_site_scores$Treatment_Year == "Birdy_2015", ]$NMDS1, nmds_coral_group_site_scores[nmds_coral_group_site_scores$Treatment_Year == "Birdy_2015", ]$NMDS2), ] 
+
+hull_nr2018<-nmds_coral_group_site_scores[nmds_coral_group_site_scores$Treatment_Year == "Birdy_2018", ][chull(nmds_coral_group_site_scores[nmds_coral_group_site_scores$Treatment_Year == "Birdy_2018", ]$NMDS1, nmds_coral_group_site_scores[nmds_coral_group_site_scores$Treatment_Year == "Birdy_2018", ]$NMDS2), ] 
+
+hull_nr2021<-nmds_coral_group_site_scores[nmds_coral_group_site_scores$Treatment_Year == "Birdy_2021", ][chull(nmds_coral_group_site_scores[nmds_coral_group_site_scores$Treatment_Year == "Birdy_2021", ]$NMDS1, nmds_coral_group_site_scores[nmds_coral_group_site_scores$Treatment_Year == "Birdy_2021", ]$NMDS2), ] 
+
+hull_r2018<-nmds_coral_group_site_scores[nmds_coral_group_site_scores$Treatment_Year == "Ratty_2018", ][chull(nmds_coral_group_site_scores[nmds_coral_group_site_scores$Treatment_Year == "Ratty_2018", ]$NMDS1, nmds_coral_group_site_scores[nmds_coral_group_site_scores$Treatment_Year == "Ratty_2018", ]$NMDS2), ] 
+
+hull_r2015<-nmds_coral_group_site_scores[nmds_coral_group_site_scores$Treatment_Year == "Ratty_2015", ][chull(nmds_coral_group_site_scores[nmds_coral_group_site_scores$Treatment_Year == "Ratty_2015", ]$NMDS1, nmds_coral_group_site_scores[nmds_coral_group_site_scores$Treatment_Year == "Ratty_2015", ]$NMDS2), ] 
+
+hull_r2021<-nmds_coral_group_site_scores[nmds_coral_group_site_scores$Treatment_Year == "Ratty_2021", ][chull(nmds_coral_group_site_scores[nmds_coral_group_site_scores$Treatment_Year == "Ratty_2021", ]$NMDS1, nmds_coral_group_site_scores[nmds_coral_group_site_scores$Treatment_Year == "Ratty_2021", ]$NMDS2), ] 
+
+
+hull.data <- rbind(hull_nr2015, hull_nr2018, hull_nr2021, hull_r2021,  hull_r2018, hull_r2015)  #combine grp.a and grp.b
+hull.data
+
+#rename species:
+species.scores_coral_group2<-
+  species.scores_coral_group%>%
+  mutate(Species = case_when(Species == "Heliopora_Millepora"~ "Heliopora/Millepora",
+                             TRUE ~ as.character(Species)))
+
+
+#check how groups shift, and orrelations between species and nmds axes -----
+ord.fit.coral<-envfit(nmds_coral_group~Treatment_Year, data = uvc_dat_corals_group_isl_wide_ty)
+ord.fit.coral
+#both birdy and ratty shift positive NMDS2 in 2018 and then rebound. Also slight shift negative (/lower) on NMDS1
+
+cor(uvc_dat_corals_group_isl_wide_sp, scores(nmds_coral_group, dis="si"))
+#strongest positive corr wtih NMDS2 = Platygyra (and Porites). Negative corr = nothing that strong (stongest = Heliopora/Millepora)
+#strongest negative corr with NMDS1 = Heliorpora/Millepora. Strongest positive corr = Acropora by far. 
+
+#check dominant corals in each year:----
+#make a combo treatment-year column and retry:
+uvc_dat_corals_group_isl_wide_ty<-
+  uvc_dat_corals_group_isl_wide %>%
+  unite("Treatment_Year", c(Treatment, Year), remove = FALSE)%>%
+  relocate(Treatment_Year, .after = Treatment)
+
+uvc_dat_corals_group_isl_wide_ty%>%
+  ungroup()%>%
+  group_by(Year)%>%
+  summarize(across(where(is.numeric), ~sum(.x)))
+#at island scale: 
+#acropora dominant in all years, but big reductions. Porites shows slight increase. Pocillopora also decrease then increase
+
+
+#if want arrows:
+     # geom_segment(aes(x = -0.1855, y = -0.3036, xend = -0.5829, yend = 0.6873), colour = "#0067A5", linetype=1)+ #from ord.fit
+   # geom_segment(aes(x = -0.5829, y = 0.6873, xend = 0.0565, yend = -0.1825), colour = "#0067A5", linetype=1, arrow =   arrow(length = unit(0.1, "inches")))+ #from ord.fit
+     #   geom_segment(aes(x = 0.2258, y = -.1552, xend = 0.0576, yend = 0.3679), colour = "#BE0032", linetype=1)+ #from ord.fit
+  #  geom_segment(aes(x = 0.0576, y = 0.3679, xend = 0.3409, yend = -0.2380), colour = "#BE0032", linetype=1, arrow =   arrow(length = unit(0.1, "inches")))+ 
+
+
+
+nmds_coral_group_plot<-
+ggplot() + 
+ geom_polygon(data=hull.data,aes(x=NMDS1,y=NMDS2,fill=Treatment_Year,group=Treatment_Year, colour = Treatment_Year),alpha = 0.15, linetype=1, lwd = .1) + # add the 
+  geom_text(data=species.scores_coral_group2,aes(x=NMDS1,y=NMDS2,label=Species), size = 3) +  # add the species labels - 
+  geom_point(data=nmds_coral_group_site_scores,aes(x=NMDS1,y=NMDS2,colour=Treatment_Year, fill = Treatment_Year, pch = Treatment_Year), stat="identity", size=5, alpha = .5) +
+scale_colour_manual(name = "Year and Treatment",
+                      labels = c("2015 seabird", "2018 seabird", "2021 seabird", 
+                                 "2015 rat", "2018 rat", "2021 rat"),
+                      values = c("#0067A5", "#0067A5", "#0067A5", 
+                                 "#BE0032", "#BE0032", "#BE0032"), guide = "none") +   
+     scale_fill_manual(name = "Year and Treatment",
+                      labels = c("2015 seabird", "2018 seabird", "2021 seabird", 
+                                 "2015 rat", "2018 rat", "2021 rat"),
+                      values = c("#0067A5", "#0067A5", "#0067A5", 
+                                 "#BE0032", "#BE0032", "#BE0032") ) +  
+  scale_shape_manual(name = "Year and Treatment",
+                      labels = c("2015 seabird", "2018 seabird", "2021 seabird", 
+                                 "2015 rat", "2018 rat", "2021 rat"),
+                     values = c(21, 24, 22, 21, 24, 22))+
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), # remove gridlines
+        panel.grid.minor = element_blank(), #remove gridlines
+        strip.background = element_blank(), #remove gray boxes
+        text = element_text(size=20),
+        legend.title = element_blank(), #remove legend title
+        legend.box.background = element_rect(colour = "black", fill='white', linetype='solid', size=1),
+        legend.text=element_text(size=12))
+      
+nmds_coral_group_plot
+
+
+```

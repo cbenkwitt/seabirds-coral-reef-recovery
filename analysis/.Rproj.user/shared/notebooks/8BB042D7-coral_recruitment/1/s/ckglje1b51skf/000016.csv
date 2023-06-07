@@ -1,0 +1,21 @@
+"0",""
+"0",""
+"0",""
+"0","#look at which genera make up recruits-----"
+"0","recruit_dat_2018_transect_genus_wide%>%"
+"0","  mutate(Total_density = sum(Total_density))%>%"
+"0","  pivot_longer(cols = !c(Atoll, Island, Treatment, Transect, Total_density),"
+"0","               names_to = ""Genus"", values_to = ""Density_m2"") %>%"
+"0","    group_by(Genus)%>%"
+"0","    summarize(sum_genus = sum(Density_m2),"
+"0","      prop_genus = sum_genus/Total_density)%>%"
+"0","  unique()"
+"2","Warning:"
+"2"," [38;5;251mReturning more (or less) than 1 row per `summarise()` group was deprecated in dplyr 1.1.0.
+[36mℹ[38;5;251m Please use `reframe()` instead.
+[36mℹ[38;5;251m When switching from `summarise()` to `reframe()`, remember that `reframe()` always returns an ungrouped data frame and
+  adjust accordingly.
+[90mCall `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.[38;5;251m[39m
+"
+"1","[38;5;251m`summarise()` has grouped output by 'Genus'. You can override using the `.groups` argument.[39m
+"

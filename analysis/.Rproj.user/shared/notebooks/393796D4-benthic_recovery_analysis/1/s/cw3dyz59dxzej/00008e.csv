@@ -1,0 +1,1 @@
+"0","pp_check(benthic_mod_beta, resp = ""Halimeda"", ndraws = 100) ##not sampling quite high enough at 0. compared to 0-inflated model for Halimeda and got same results, so can keep this one to have all groups together. "

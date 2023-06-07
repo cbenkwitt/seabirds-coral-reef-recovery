@@ -1,0 +1,168 @@
+---
+title: "coral_growth_natural"
+author: "CEB"
+date: '2023-03-20'
+output: html_document
+---
+
+
+# load packages
+```{r}
+library(tidyverse)
+
+library(cowplot) #for combining plots
+
+#bayesian analyses:
+library(brms)
+library(tidybayes)
+
+#extracting effects
+library(emmeans)
+
+```
+
+
+##set plot theme
+```{r}
+theme_casey<-
+  theme_bw()+
+  theme(panel.grid.major = element_blank(), # remove gridlines
+        panel.grid.minor = element_blank(), #remove gridlines
+        strip.background = element_blank(), 
+        #text = element_text(size = 14, family = "Arial"),
+        rect = element_rect(fill = "transparent"),  
+        plot.background = element_rect(fill = "transparent", color = NA)
+        )
+
+theme_set(theme_casey)
+
+```
+
+
+
+## load data
+```{r}
+load("../data/R_data/coral_natural_growth_data.RData")
+
+#growth_dat_diff_r_no0_w_init_size_cs
+
+```
+
+
+
+##Bayesian model
+```{r}
+
+###set prior-----
+   nat_gr_prior<-
+     set_prior("normal(1, .5)", class = "b", coef = "Treatmentrlbirdy")+ #definitely expect positive effect
+    set_prior("normal(0, 1)", class = "b", coef = "Previous_surface_area_cs")+ #really not sure on this, expect larger colonies to grow more absolute, but smaller proportionally. So go with 0
+    set_prior("normal(4.6, 1)", class = "Intercept") #based on mean growth from previous studies = 4, along with max and min
+   
+   
+   
+###run model-----
+natural_growth_mod_log<- brm(
+ diff_sa_year_log~Treatmentrl + Previous_surface_area_cs + (1|Atoll/Island/ID) + (1|Year),
+  data = growth_dat_diff_r_no0_w_init_size_cs, 
+  iter = 3000, warmup = 1000, chains = 4, cores = 4,
+  control = list(adapt_delta = 0.999, max_treedepth = 15), 
+ sample_prior="yes",
+ prior = nat_gr_prior,
+      file = "../output/brms/natural_growth_mod_log") 
+print(natural_growth_mod_log) #0 divergent trans
+
+
+##check plots----
+pp_check(natural_growth_mod_log)
+plot(natural_growth_mod_log, ask = FALSE)
+
+```
+
+
+
+###extract info from models
+```{r}
+##hypothesis testing----
+#1-sided:
+hypothesis(natural_growth_mod_log, c("Treatmentrlbirdy>0", #0.99
+                                           "Previous_surface_area_cs>0")) #1.00
+#2-sided:
+hypothesis(natural_growth_mod_log, c("Treatmentrlbirdy=0", #0.34*
+                                           "Previous_surface_area_cs=0")) #.07*
+
+
+##extract emmeans----
+natural_growth_mod_log.rg <- update(ref_grid(natural_growth_mod_log), tran = "log") #THIS LINE IS CLUTCH*** Now don't have to use link transformations, can use log response and still backtransform with emmeans
+
+
+natural_growth_mod_log.rg%>%
+emmeans("Treatmentrl", 
+        by="Previous_surface_area_cs", #additive model, don't actually need this
+        type="response")%>%
+  contrast("revpairwise")
+# contrast      ratio lower.HPD upper.HPD
+#birdy / ratty  2.37      1.06      4.54
+
+natural_growth_mod_log.rg%>%
+emmeans("Treatmentrl", 
+        by=c("Previous_surface_area_cs"), #additive model, don't actually need this
+        type="response")%>%
+  contrast("trt.vs.ctrl")
+#same as above....
+
+
+###to report median estimates for each group, on response scale: 
+natural_growth_mod_log.rg %>% 
+  emmeans(~ Treatmentrl|Previous_surface_area_cs,
+          type = "response") 
+#ratty  58.7 
+#bidy   134.6 
+
+
+```
+
+
+#plot posterior distributions by group
+```{r}
+
+natural_growth_group_estimates_plot<-
+natural_growth_mod_log %>% 
+  epred_draws(newdata = expand_grid(Treatmentrl = c("birdy", "ratty"), 
+                                    Previous_surface_area_cs = 0, 
+                                    reps = 100),
+                  re_formula=NA) %>%
+  ggplot(aes(x = .epred, color = Treatmentrl, fill = Treatmentrl)) +
+  stat_slab(point_interval=median_hdi, slab_alpha = .4) + #use relevel only because then blue is on top. 
+   stat_pointinterval(.width=c(.9, .7), position = position_dodge(width = .2, preserve = "single")) +
+  scale_color_manual(values = c("#0067A5", "#BE0032"),
+                    name = "",
+                                            breaks=c("birdy",  "ratty"),
+                       labels=c("seabird", "rat"))+
+  scale_fill_manual(values = c("#0067A5",  "#BE0032"),
+                    name = "", breaks=c("birdy",  "ratty"),
+                       labels=c("seabird", "rat")
+                    )+ #light blue = #A1CAF1, light red/pink = #F99379, orange = #F38400, purple = #875692
+    xlab(expression(paste("coral growth rate (log cm"^"2"*"year"^"-1"*")")))+
+  scale_y_continuous(lim=c(-.15,1), breaks = c(0, .5,  1.0))+
+  ylab("posterior probability")+
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), # remove gridlines
+        panel.grid.minor = element_blank(), #remove gridlines
+        strip.background = element_blank(), 
+        legend.position = c(.8, .9),  
+      # legend.title=element_blank(),
+        rect = element_rect(fill = "transparent"),  
+        plot.background = element_rect(fill = "transparent", color = NA)) 
+
+natural_growth_group_estimates_plot
+
+
+#ggsave(filename = "Figures/natural_growth_group_estimates_plot.jpg", 
+#       plot = natural_growth_group_estimates_plot,
+#     width = 5,
+#       height = 5,
+#     units = "in",
+#      dpi = 300)
+```
+

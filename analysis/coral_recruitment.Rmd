@@ -1,0 +1,258 @@
+---
+title: "coral_recruitment"
+author: "CEB"
+date: '2023-05-04'
+output: html_document
+---
+
+
+NOTE: CHECK THAT REMNANT COLONIES ARE NOT INCLUDED IN THESE ANALYSES**** Or just include them...either way shouldn't affect the results. Double-check literature
+
+#load packages
+```{r}
+library(tidyverse)
+library(vegan)
+library(cowplot)
+library(lme4)
+library(brms)
+library(car)
+library(jtools)
+library(tidybayes)
+library(emmeans)
+
+```
+
+
+#set plot theme
+```{r}
+theme_casey<-
+  theme_bw()+
+  theme(panel.grid.major = element_blank(), # remove gridlines
+        panel.grid.minor = element_blank(), #remove gridlines
+        strip.background = element_blank(), 
+        rect = element_rect(fill = "transparent"),  
+        plot.background = element_rect(fill = "transparent", color = NA)
+        )
+
+theme_set(theme_casey) #THIS IS KEY*****
+  
+  
+```
+
+
+#load data
+```{r}
+#recruit data:---- 
+load("../data/R_data/recruit_dat_2018_transect_genus_wide.Rdata")
+recruit_dat_2018_transect_genus_wide
+
+```
+
+#Acropora only anlaysis
+```{r}
+
+#limit recruit data to acropora: ----
+recruit_dat_2018_trans_acrop<-
+  recruit_dat_2018_transect_genus_wide %>%
+  select(Atoll, Island, Treatment, Transect, Acropora)%>%
+  rename(Total_density_m2 = Acropora )
+recruit_dat_2018_trans_acrop
+
+
+##setting correct priors----
+#negative binomial link is log, so assume these are log transformed...
+c(prior("normal(-.1, 1)", class = "b"), #expect positive effect of birds (so negative effect of rats because these not re-leveled) but not too sure because not much previous research, so keep low and wide
+    prior("normal(0, 1)", class = "Intercept")) %>%#expect mean of 1 Acropora recruits per meter, range from 0 - 2.... log(1) is 0....
+    parse_dist(prior) %>%
+  ggplot(aes(y = 0, dist = .dist, args = .args)) +
+   stat_dist_halfeye()+
+ # stat_dist_halfeye(.width = .5, size = 1, p_limits = c(0, 0.9995),
+  #                 n = 2e3, normalize = "xy") +
+  scale_y_continuous(NULL, breaks = NULL) +
+  xlab(expression(theta)) +
+  facet_wrap(~ class, scales = "free_x", labeller = label_parsed)
+
+recruit_prior_zi_new<-
+  set_prior("normal(-.1,1)", class = "b")+
+  set_prior("normal(0,1)", class = "Intercept") 
+
+
+#run model----
+recruit_acrop_mod<- brm(bf(Total_density_m2 ~ Treatment + (1|Atoll/Island), 
+                                     zi ~1 + (1|Atoll/Island),
+                                     family = zero_inflated_negbinomial()),
+                data=recruit_dat_2018_trans_acrop,
+              iter = 3000, warmup = 1000, cores=4, chains = 4, 
+                control = list(adapt_delta = 0.999, max_treedepth = 15), 
+              prior = recruit_prior_zi_new,
+              sample_prior="yes",
+                file = "../output/brms/recruit_acrop_mod")
+
+print(recruit_acrop_mod) #fast and no divergent trans
+
+#check plots----
+pp_check(recruit_acrop_mod) #seems okay, a few extreme draws
+plot(recruit_acrop_mod, ask = FALSE)
+
+
+##extract estimates----
+#to report median estimates for each group, on response scale: 
+recruit_acrop_mod %>% 
+  emmeans(~Treatment,
+          epred = TRUE,
+          re_formula = NA) #(doesn't make a difference to include or exclude in this.) 
+#Treatment emmean lower.HPD upper.HPD
+# Birdy     0.510   0.00228      2.71
+# Ratty     0.587   0.00374      2.75
+
+
+#let's make this into a contrast:
+recruit_acrop_mod %>% 
+  emmeans(~ Treatment,
+          epred = TRUE)  %>%
+  contrast(method = "pairwise")
+# contrast      estimate lower.HPD upper.HPD
+# Birdy - Ratty   -0.0447     -2.06      2.05
+
+
+
+###make plot-----
+
+pred_acrop_recruit<-
+  recruit_acrop_mod %>% 
+  epred_draws(newdata = expand_grid(Treatment = c("Birdy", "Ratty")), 
+                  re_formula=NA) 
+
+acrop_recruit_plot_mult_hdis<-
+pred_acrop_recruit %>%
+  mutate(Treatment = as.factor(Treatment))%>%
+  ggplot(aes(x = Treatment, y = .epred, color = Treatment, fill = Treatment, shape = Treatment)) +
+  stat_pointinterval(point_interval=median_hdi, .width=c(.9, .7), fatten_point = 2, interval_alpha = 0.2, position = position_dodge(width = .05)) +
+ # geom_vline(xintercept = 0, linetype = "dashed") +
+ # ylim(c(0,.75))+
+    ylab(expression(paste("Acropora recruits "*"m"^"-1")))+
+scale_color_manual(values = c("#0067A5", "#BE0032"),
+                                            breaks=c("Birdy",  "Ratty"),
+                      labels=c("seabird islands",  "rat islands"),
+                    name = "" )+
+  scale_fill_manual(values = c("#0067A5", "#BE0032"),
+                                            breaks=c("Birdy",  "Ratty"),
+                      labels=c("seabird islands",  "rat islands"),
+                    name = "" )+ 
+    scale_shape_manual(values = c(19, 15),
+                    breaks=c("Birdy",  "Ratty"),
+                      labels=c("seabird islands",  "rat islands"),
+                    name = "" )+
+  xlab("")+
+    scale_x_discrete(labels = c('seabird islands','rat islands'))+
+  scale_y_continuous(breaks = c(0,1,2))+
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), # remove gridlines
+        panel.grid.minor = element_blank(), #remove gridlines
+        strip.background = element_blank(), 
+        legend.position = "none",  
+        rect = element_rect(fill = "transparent"),  
+        plot.background = element_rect(fill = "transparent", color = NA)) 
+
+acrop_recruit_plot_mult_hdis
+
+```
+
+#All recruits analysis
+```{r}
+
+#set reasonable priors-----
+all_recruit_prior<-
+  set_prior("normal(-.1,1)", class = "b")+ #expect positive effect of birds (so negative effect of rats because these not re-leveled) but not too sure because not much previous research, so keep low and wide 
+  set_prior("normal(1.5,1)", class = "Intercept") #expect more recruits than for only Acropora. 
+
+#run model----
+recruit_all_mod<-brm(bf(Total_density ~ Treatment + (1|Atoll/Island), 
+                                     zi ~1 + (1|Atoll/Island),
+                                     family = zero_inflated_negbinomial()),
+                data=recruit_dat_2018_transect_genus_wide,
+              iter = 3000, warmup = 1000, cores=4, chains = 4, 
+                control = list(adapt_delta = 0.999, max_treedepth = 15), 
+             prior = all_recruit_prior,
+              sample_prior="yes",
+                file = "../output/brms/recruit_all_mod")
+print(recruit_all_mod)
+
+
+#check plots----
+pp_check(recruit_all_mod) #good
+plot(recruit_all_mod, ask = FALSE)
+
+
+#extract estimates-----
+recruit_all_mod %>% 
+  emmeans(~Treatment,
+          epred = TRUE,
+          re_formula = NA)
+# Treatment emmean lower.HPD upper.HPD
+# Birdy       2.76     0.562      5.57
+# Ratty       2.77     0.504      5.69
+#nearly identical!? - makes sense based on model output, because treatment effect estimate = 0....
+
+recruit_all_mod %>% 
+  emmeans(~ Treatment,
+          epred = TRUE)  %>%
+  contrast(method = "pairwise")
+# contrast      estimate lower.HPD upper.HPD
+# Birdy - Ratty   -0.00161     -2.03      2.02
+
+
+##plot-----
+pred_all_recruit<-
+  recruit_all_mod %>% 
+  epred_draws(newdata = expand_grid(Treatment = c("Birdy", "Ratty")), 
+                  re_formula=NA) 
+
+all_recruit_plot_mult_hdis<-
+pred_all_recruit %>%
+  mutate(Treatment = as.factor(Treatment))%>%
+  ggplot(aes(x = Treatment, y = .epred, color = Treatment, fill = Treatment, shape = Treatment)) +
+  stat_pointinterval(point_interval=median_hdi, .width=c(.9, .7), fatten_point = 2, interval_alpha = 0.2, position = position_dodge(width = .05)) +
+ # geom_vline(xintercept = 0, linetype = "dashed") +
+ # ylim(c(0,.75))+
+    ylab(expression(paste("coral recruits "*"m"^"-1")))+
+scale_color_manual(values = c("#0067A5", "#BE0032"),
+                                            breaks=c("Birdy",  "Ratty"),
+                      labels=c("seabird islands",  "rat islands"),
+                    name = "" )+
+  scale_fill_manual(values = c("#0067A5", "#BE0032"),
+                                            breaks=c("Birdy",  "Ratty"),
+                      labels=c("seabird islands",  "rat islands"),
+                    name = "" )+ 
+    scale_shape_manual(values = c(19, 15),
+                    breaks=c("Birdy",  "Ratty"),
+                      labels=c("seabird islands",  "rat islands"),
+                    name = "" )+
+  xlab("")+
+    scale_x_discrete(labels = c('seabird islands','rat islands'))+
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), # remove gridlines
+        panel.grid.minor = element_blank(), #remove gridlines
+        strip.background = element_blank(), 
+        legend.position = "none",  
+        rect = element_rect(fill = "transparent"),  
+        plot.background = element_rect(fill = "transparent", color = NA)) 
+
+all_recruit_plot_mult_hdis
+
+
+
+#look at which genera make up recruits-----
+recruit_dat_2018_transect_genus_wide%>%
+  mutate(Total_density = sum(Total_density))%>%
+  pivot_longer(cols = !c(Atoll, Island, Treatment, Transect, Total_density),
+               names_to = "Genus", values_to = "Density_m2") %>%
+    group_by(Genus)%>%
+    summarize(sum_genus = sum(Density_m2),
+      prop_genus = sum_genus/Total_density)%>%
+  unique()
+
+```
+
+
+

@@ -1,0 +1,243 @@
+---
+title: "coral-individual-isotopes-growth"
+author: "CEB"
+date: '2023-05-04'
+output: html_document
+---
+
+## load packages
+```{r}
+library(tidyverse)
+
+library(cowplot) #for combining plots
+
+#bayesian analyses:
+library(brms)
+library(tidybayes)
+
+library(jtools) #for partialize
+
+```
+
+#set plot theme
+```{r}
+theme_casey<-
+  theme_bw()+
+  theme(panel.grid.major = element_blank(), # remove gridlines
+        panel.grid.minor = element_blank(), #remove gridlines
+        strip.background = element_blank(), 
+        text = element_text(size = 14, family = "Arial"),
+        rect = element_rect(fill = "transparent"),  
+        plot.background = element_rect(fill = "transparent", color = NA)
+        )
+
+theme_set(theme_casey)
+```
+
+
+
+#load data
+```{r}
+load("../data/R_data/individual_isotope_growth_combined_cs_data.RData")
+#individual_isotope_growth_combined_cs_data
+
+```
+
+
+#run brms model - symbiont N15 vs growth
+```{r}
+
+#set priors-----
+ind_iso_gr_prior<-
+     set_prior("normal(.5, 1)", class = "b", coef = "Symbiont_N15_cs")+ #expect positive effect, but no one has looked at individuals before make overlap a lot of 0 (similar to origin treatment in RTE models)
+    set_prior("normal(0, 1)", class = "b", coef = "Previous_surface_area_cs")+ #really not sure on this, expect larger colonies to grow more absolute, but smaller proportionally. So go with 0
+      set_prior("normal(0, 1)", class = "b", coef = "TypeRTE")+ #really not sure on this, but do expect to be similar between experimental and natural colonies, so make overlap 0. 
+    set_prior("normal(4.6, 1)", class = "Intercept") #based on mean growth from previous studies = 4, along with max and min, max growth from Pratchett (assuming pi*r^2) for Acropora = exp(7.2) (1333 cm/year). mean growth = 4.6 (100)
+   
+
+ind_iso_gr_mod <- brm(
+ log(diff_SA_year)~Symbiont_N15_cs+ Previous_surface_area_cs + Type + (1|Atoll/Island),
+  data = individual_isotope_growth_combined_cs_data, 
+  iter = 3000, warmup = 1000, chains = 4, cores = 4,
+  control = list(adapt_delta = 0.999, max_treedepth = 15), 
+  prior = ind_iso_gr_prior,
+   sample_prior="yes",
+      file = "../output/brms/ind_iso_gr_mod") #fast sampling, no divergent trans :)
+
+print(ind_iso_gr_mod)  #yup, definite effect of symbiont N15, doesn't look like muhc effect of prev surface area (slight negative), no effect of type (RTE vs. natural) (large overlap of 0)*
+
+#check plots
+plot(ind_iso_gr_mod, ask = FALSE)
+
+pp_check(ind_iso_gr_mod) #looks pretty good
+
+
+```
+
+
+##extract info from models
+```{r}
+##hypothesis testing----
+#1-sided:
+hypothesis(ind_iso_gr_mod, c("Symbiont_N15_cs>0")) #.99
+
+
+#2-sided:
+hypothesis(ind_iso_gr_mod, c("Symbiont_N15_cs=0", #.13*
+                                  "Previous_surface_area_cs = 0", #.70
+                                  "TypeRTE = 0")) #.72
+
+
+
+#extract effect size, exponentiate because log scale: -----
+symb_n15_rte_gr_iso_posterior_est<-
+ind_iso_gr_mod%>%
+  gather_draws(b_Symbiont_N15_cs) %>%
+  median_hdi(.width=c(.9,.95)) %>%
+  mutate(exp_value = exp(.value), 
+         exp_lower = exp(.lower),
+         exp_higher = exp(.upper))
+
+
+symb_n15_rte_gr_iso_posterior_est
+#95% HPD: 2.09629	1.144063	3.973096
+
+```
+
+
+#plot model results - regression line + raw data
+```{r}
+#for both natural and RTE colonies. 90% CI----
+conditions <- data.frame(Type = c("Natural", "RTE"))
+symb_n15_gr_rte_ce_90<-conditional_effects(ind_iso_gr_mod, prob = .9, effects = 'Symbiont_N15_cs',  conditions = conditions, plot = FALSE)[[1]]
+
+symb_n15_gr_rte_ce_90
+
+individual_isotope_growth_combined_cs_data %>%
+  ggplot(aes(x = Symbiont_N15_cs, y = log(diff_SA_year))) +
+     geom_jitter(width=.07, height = 0, alpha = 0.4, aes(color = Type, fill = Type), size = 3) + #, size = .8
+    geom_ribbon(data = symb_n15_gr_rte_ce_90, aes(ymin = lower__, ymax=upper__, fill = Type), alpha = .2)+
+    geom_line(data = symb_n15_gr_rte_ce_90, aes(x = Symbiont_N15_cs, y = estimate__, color = Type), lwd = 1.2) +
+  theme_bw()+
+    guides(size = "none", colour = "none",  fill = guide_legend(title="Confidence level")) + 
+    theme(panel.grid.major = element_blank(), # remove gridlines
+        panel.grid.minor = element_blank(), #remove gridlines
+        strip.background = element_blank(),
+    #            text = element_text(size = 24),
+        legend.position='none')
+
+
+#get data for un-scaling and centering:----
+sd(individual_isotope_growth_combined_cs_data$Symbiont_N15) #1.356171
+mean(individual_isotope_growth_combined_cs_data$Symbiont_N15) #7.132174
+
+symb_n15_gr_rte_ce_90_unscale<-
+  symb_n15_gr_rte_ce_90%>%
+  mutate(Symbiont_N15 = (Symbiont_N15_cs * 1.356171) + 7.132174 ) #*sd) + mean
+
+
+iso_gr_rte_line_plot<-
+individual_isotope_growth_combined_cs_data %>%
+  ggplot(aes(x = Symbiont_N15, y = log(diff_SA_year))) +
+    geom_ribbon(data = symb_n15_gr_rte_ce_90_unscale, aes(x = Symbiont_N15, ymin = lower__, ymax=upper__, fill = Type), alpha = .2)+
+    geom_line(data = symb_n15_gr_rte_ce_90_unscale, aes(x = Symbiont_N15, y = estimate__, color = Type), alpha = .9, lwd = 1.2) +
+     geom_point(alpha = .8, aes(color = Type, fill = Type, shape = Type), size = 3) + #, size = .8
+  theme_bw()+
+  scale_color_manual(values = c("#4ac16d", "#1fa187"),
+                     guide = "none")+
+  scale_fill_manual(values = c( "#4ac16d", "#1fa187"),
+                    name = "",
+                                            breaks=c("RTE", "Natural"),
+                       labels=c("experimental colony", "natural colony"))+
+    scale_shape_manual(values = c(24, 21),
+                    name = "",
+                                            breaks=c( "RTE", "Natural"),
+                       labels=c("experimental colony", "natural colony"))+
+    xlab(expression(symbiont~delta^15~N))+
+      ylab(expression(paste("coral growth rate (log(cm"^"2"*"year"^"-1"*"))")))+
+ # scale_y_continuous(trans = "log10")+ #don't want to actually transform axis, just change labels   scale_y_continuous(trans = "log10")+
+    guides(size = "none") + 
+    theme(panel.grid.major = element_blank(), # remove gridlines
+        panel.grid.minor = element_blank(), #remove gridlines
+        strip.background = element_blank(),
+          legend.position = c(.2,.9))
+    #     text = element_text(size = 24))
+
+iso_gr_rte_line_plot
+
+
+#rte and natural nearly identical, so just plot one line with grand mean for clarity----
+#set priors (remove Type prior)
+ind_iso_gr_prior_gm<-
+     set_prior("normal(.5, 1)", class = "b", coef = "Symbiont_N15_cs")+ #expect positive effect, but no one has looked at individuals before make overlap a lot of 0 (similar to origin treatment in RTE models)
+    set_prior("normal(0, 1)", class = "b", coef = "Previous_surface_area_cs")+ #really not sure on this, expect larger colonies to grow more absolute, but smaller proportionally. So go with 0
+    set_prior("normal(4.6, 1)", class = "Intercept") #based on mean growth from previous studies = 4, along with max and min, max growth from Pratchett (assuming pi*r^2) for Acropora = exp(7.2) (1333 cm/year). mean growth = 4.6 (100)
+
+ind_iso_gr_mod_gm <- brm(
+ log(diff_SA_year)~Symbiont_N15_cs+ Previous_surface_area_cs  + (1|Atoll/Island),
+  data = individual_isotope_growth_combined_cs_data, 
+  iter = 3000, warmup = 1000, chains = 4, cores = 4,
+  control = list(adapt_delta = 0.999, max_treedepth = 15), 
+  prior = ind_iso_gr_prior_sum,
+   sample_prior="yes",
+      file = "../output/brms/ind_iso_gr_mod_gm")
+
+print(ind_iso_gr_mod_gm)
+print(ind_iso_gr_mod)
+#yup, looks nearly identical
+
+symb_n15_gr_rte_ce_90_gm<-conditional_effects(ind_iso_gr_mod_gm, prob = .9, effects = 'Symbiont_N15_cs', plot = FALSE)[[1]]
+
+symb_n15_gr_rte_ce_70_gm<-conditional_effects(ind_iso_gr_mod_gm, prob = .7, effects = 'Symbiont_N15_cs', plot = FALSE)[[1]]
+
+
+#get data for un-scaling and centering:----
+sd(individual_isotope_growth_combined_cs_data$Symbiont_N15) #1.356171
+mean(individual_isotope_growth_combined_cs_data$Symbiont_N15) #7.132174
+
+symb_n15_gr_rte_ce_90_gm_unscale<-
+  symb_n15_gr_rte_ce_90_gm%>%
+  mutate(Symbiont_N15 = (Symbiont_N15_cs * 1.356171) + 7.132174 ) #*sd) + mean
+  
+symb_n15_gr_rte_ce_70_gm_unscale<-
+  symb_n15_gr_rte_ce_70_gm%>%
+  mutate(Symbiont_N15 = (Symbiont_N15_cs * 1.356171) + 7.132174 ) #*sd) + mean
+
+
+iso_gr_rte_line_plot<-
+individual_isotope_growth_combined_cs_data %>%
+  ggplot(aes(x = Symbiont_N15, y = log(diff_SA_year))) +
+    geom_ribbon(data = symb_n15_gr_rte_ce_90_gm_unscale, aes(x = Symbiont_N15, ymin = lower__, ymax=upper__), alpha = .2, fill = "grey")+
+    geom_ribbon(data = symb_n15_gr_rte_ce_70_gm_unscale, aes(x = Symbiont_N15, ymin = lower__, ymax=upper__), alpha = .4, fill = "grey")+
+    geom_line(data = symb_n15_gr_rte_ce_90_gm_unscale, aes(x = Symbiont_N15, y = estimate__), color = "black", alpha = .9, lwd = 1.2) +
+     geom_point(alpha = .8, aes(color = Type, fill = Type, shape = Type), size = 3) + #, size = .8
+  scale_color_manual(values = c("#4ac16d", "#1fa187"),
+                     guide = "none")+
+  scale_fill_manual(values = c( "#4ac16d", "#1fa187"),
+                    name = "",
+                                            breaks=c("RTE", "Natural"),
+                       labels=c("experimental colony", "natural colony"))+
+    scale_shape_manual(values = c(24, 21),
+                    name = "",
+                                            breaks=c( "RTE", "Natural"),
+                       labels=c("experimental colony", "natural colony"))+
+    xlab(expression(symbiont~delta^15~N))+
+      ylab(expression(paste("coral growth rate (log(cm"^"2"*"year"^"-1"*"))")))+
+ # scale_y_continuous(trans = "log10")+ #don't want to actually transform axis, just change labels   scale_y_continuous(trans = "log10")+
+    guides(size = "none") + 
+    theme_bw() + 
+  theme(panel.grid.major = element_blank(), # remove gridlines
+        panel.grid.minor = element_blank(), #remove gridlines
+        strip.background = element_blank(), 
+        legend.position = c(.3,.9),
+        rect = element_rect(fill = "transparent"),  
+        plot.background = element_rect(fill = "transparent", color = NA)) 
+
+iso_gr_rte_line_plot
+
+```
+
+
+
+
+

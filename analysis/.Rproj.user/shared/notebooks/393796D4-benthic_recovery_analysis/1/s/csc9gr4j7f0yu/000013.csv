@@ -1,0 +1,7 @@
+"0",""
+"0","pred_dist_bray<-"
+"0","  dist_2015_bray_mod_beta %>% "
+"0","  epred_draws(newdata = expand_grid(Treatment = c(""Birdy"", ""Ratty""), Year = c(2018, 2021)), "
+"0","                  re_formula=NA) %>%"
+"0","  mutate(Treatment_Year = str_c(Treatment, Year, sep =""_""))"
+"0","pred_dist_bray"

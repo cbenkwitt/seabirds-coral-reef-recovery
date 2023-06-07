@@ -1,0 +1,466 @@
+---
+title: "coral_island_isotopes"
+author: "CEB"
+date: '2023-05-04'
+output: html_document
+---
+
+## Load packages
+```{r}
+library(tidyverse)
+library(cowplot)#for combining plots
+
+#bayesian analyses:
+library(brms)
+library(tidybayes)
+library(emmeans)
+
+```
+
+#set plot theme
+```{r}
+theme_casey<-
+  theme_bw()+
+  theme(panel.grid.major = element_blank(), # remove gridlines
+        panel.grid.minor = element_blank(), #remove gridlines
+        strip.background = element_blank(), 
+        #text = element_text(size = 14, family = "Arial"),
+        rect = element_rect(fill = "transparent"),  
+        plot.background = element_rect(fill = "transparent", color = NA)
+        )
+
+theme_set(theme_casey)
+```
+
+
+## Load data - all nutrients
+```{r}
+load("../data/R_data/island_isotope_combined_data.RData")
+iso_all_2019_dat #natural nutrients - 2018/2019, one line per coral
+iso_rte_dat #experimental nutrients
+
+
+```
+
+
+
+
+#run brms model - island-level
+```{r}
+#note: tested other models, but need to run non-logged to avoid divergent transitions.
+
+#prior plots-----
+   c(prior("normal(5, 3)", class = "Intercept", lb = 0),
+    prior("normal(2.5, 5)", class = "b", coef = "Treatmentrlbirdy"),
+    prior("normal(0,5)", class = "b", coef = "Treatmentrlcontrol"))%>%
+    parse_dist(prior) %>%
+  ggplot(aes(y = 0, dist = .dist, args = .args)) +
+   stat_dist_halfeye()+
+ # stat_dist_halfeye(.width = .5, size = 1, p_limits = c(0, 0.9995),
+  #                 n = 2e3, normalize = "xy") +
+  scale_y_continuous(NULL, breaks = NULL) +
+  xlab(expression(theta)) +
+  facet_wrap(~ coef, scales = "free_x", labeller = label_parsed)
+   
+   
+###set prior-----
+isl_n15_prior<-
+     set_prior("normal(5, 3)", class = "Intercept", lb = 0)+ 
+    set_prior("normal(2.5, 5)", class = "b", coef = "Treatmentrlbirdy")+
+  set_prior("normal(0,5)", class = "b", coef = "Treatmentrlcontrol")
+#note: also ran one without a prior for control treatment and one without 0 as lower bound for interceptand all results nearly identical
+
+###run model-----
+isl_n15_mod <- brm(
+ Symbiont_N15~Treatmentrl + (1|Origin_site/Atoll), #island is nested within atoll. 
+  data = iso_all_2019_dat, 
+  iter = 3000, warmup = 1000, chains = 4, cores = 4,
+  control = list(adapt_delta = 0.999, max_treedepth = 15), 
+   sample_prior="yes",
+ prior = isl_n15_prior,
+      file = "../output/brms/isl_n15_mod") 
+print(isl_n15_mod)
+  
+
+##model plots/checks----
+pp_check(isl_n15_mod)
+
+plot(isl_n15_mod, ask = FALSE)
+
+plot(hypothesis(isl_n15_mod, c("Treatmentrlbirdy>0",
+                                    "Treatmentrlcontrol>0")))
+#looks good - priors are quite wide relative to posteriors
+
+
+##hypothesis test----
+hypothesis(isl_n15_mod, c("Treatmentrlbirdy>0", #1.00
+                            "Treatmentrlcontrol=0", #0.93
+                          "Treatmentrlbirdy>Treatmentrlcontrol"))  #0.98 
+
+
+##extract emmeans---
+#difference between treatments:
+isl_n15_mod%>%
+emmeans("Treatmentrl", 
+        type="response")%>%
+  contrast("revpairwise")
+# contrast      ratio lower.HPD upper.HPD
+# birdy - ratty      0.8953     0.309    1.5409 #higher
+# control - ratty    0.0867    -0.665    0.8107 #no difference
+# control - birdy   -0.8150    -1.560   -0.0949 #lower
+
+
+#####to report median estimates for each group, on response scale: 
+isl_n15_mod %>% 
+  emmeans(~ Treatmentrl,
+          type = "response") 
+# Treatmentrl emmean lower.HPD upper.HPD
+# ratty         6.31      5.88      6.74
+# birdy         7.21      6.78      7.64
+# control       6.39      5.79      6.99
+
+
+###calculate % difference:
+0.8953/6.31 #birdy is 14 % higher than ratty
+0.0867/6.31 #control is 1% higher than ratty
+0.8150/6.39 #birdy is 13% higher than control
+0.0867/6.39 #ratty is 1 % higher than control
+
+7.21/6.31 #1.142631 times higher birdy than ratty
+7.21/6.39 #1.128326 times higher birdy than control
+
+
+##posterior distribution plot----
+pred_symb_island_plot<-
+  isl_n15_mod %>% 
+  epred_draws(newdata = expand_grid(Treatmentrl = c("birdy", "ratty", "control"), 
+                                    Previous_surface_area_cs = 0, 
+                                    reps = 100),
+                  re_formula=NA) %>%
+  mutate(Treatmentrl = as.factor(Treatmentrl))%>%
+    mutate(Treatmentrl = fct_relevel(Treatmentrl, "birdy", "ratty", "control"))%>%
+ ggplot(aes(x = Treatmentrl, y = .epred, color = Treatmentrl, fill = Treatmentrl)) +
+  stat_eye(point_interval=median_hdi, .width= c(.9,.7), fatten_point = 2, slab_alpha = 0.6) +
+    scale_color_manual(values = c("#0067A5", "#BE0032", "#F3C300"))+
+  scale_fill_manual(values = c("#0067A5", "#BE0032", "#F3C300"))+
+  scale_x_discrete(labels = c('seabird','rat','no island'))+
+  xlab("")+
+  #ylab("Symbiont \u03B4 N")+
+  ylab(expression(symbiont~delta^15~N))+
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), # remove gridlines
+        panel.grid.minor = element_blank(), #remove gridlines
+        strip.background = element_blank(), 
+        legend.position = "none",  
+        rect = element_rect(fill = "transparent"),  
+        plot.background = element_rect(fill = "transparent", color = NA),
+        text=element_text(size=16,  family="Arial"),
+        axis.title.y = element_text(size=16, family="Arial")) 
+ 
+
+pred_symb_island_plot
+
+
+
+```
+
+
+###RTE nutrients
+```{r}
+
+#prior plots-----
+   c(prior("normal(5, 3)", class = "Intercept", lb = 0), #keep same as before
+    prior("normal(-2.5, 5)", class = "b", coef = "Transplant_treatmentratty"), #keep same as before, but reference level is rat not bird so make negative
+    prior("normal(-2.5,5)", class = "b", coef = "Origin_treatmentratty"), #keep same as before, but reference level is rat not bird so make negative
+    prior("normal(0,5)", class = "b", coef = "all"))%>% #not really sure how year and the rest of the b are going to effect n15, so just keep at 0
+    parse_dist(prior) %>%
+  ggplot(aes(y = 0, dist = .dist, args = .args)) +
+   stat_dist_halfeye()+
+ # stat_dist_halfeye(.width = .5, size = 1, p_limits = c(0, 0.9995),
+  #                 n = 2e3, normalize = "xy") +
+  scale_y_continuous(NULL, breaks = NULL) +
+  xlab(expression(theta)) +
+  facet_wrap(~ coef, scales = "free_x", labeller = label_parsed)
+   
+   
+### set priors----
+rte_n15_prior<-
+     set_prior("normal(5, 3)", class = "Intercept", lb = 0)+ 
+    set_prior("normal(0,5)", class = "b")+
+    set_prior("normal(-2.5, 5)", class = "b", coef = "Transplant_treatmentratty")+
+  set_prior("normal(-2.5,5)", class = "b", coef = "Origin_treatmentratty")
+
+
+##run model----
+rte_n15_mod<- brm(
+ Symbiont_N15~Origin_treatment*Transplant_treatment + Origin_treatment*Year + Transplant_treatment*Year + (1|Atoll/Origin_colony_unique_ID),
+  data = iso_rte_yr_no20, 
+  iter = 3000, warmup = 1000, chains = 4, cores = 4,
+  control = list(adapt_delta = 0.999, max_treedepth = 15), 
+ prior = rte_n15_prior,
+   sample_prior="yes",
+      file = "../output/brms/rte_n15_mod") 
+
+print(rte_n15_mod)
+  
+
+##model plots/checks----
+pp_check(rte_n15_mod)
+plot(rte_n15_mod, ask = FALSE)
+
+
+###extract emmeans----
+rte_n15_mod %>% 
+  emmeans(~ Transplant_treatment|Origin_treatment*Year,
+          type = "response") 
+
+#Origin_treatment = birdy, Year = 2018:
+# Transplant_treatment emmean lower.HPD upper.HPD
+# birdy                  7.60      5.47      9.26
+# ratty                  7.29      5.13      9.27
+
+#Origin_treatment = ratty, Year = 2018:
+# Transplant_treatment emmean lower.HPD upper.HPD
+# birdy                  6.04      3.87      7.70
+# ratty                  5.95      3.83      7.63
+
+#Origin_treatment = birdy, Year = 2019:
+# Transplant_treatment emmean lower.HPD upper.HPD
+# birdy                  7.66      5.52      9.34
+# ratty                  6.14      3.77      7.98
+
+#Origin_treatment = ratty, Year = 2019:
+# Transplant_treatment emmean lower.HPD upper.HPD
+# birdy                  6.96      4.81      8.66
+# ratty                  5.65      3.34      7.22
+
+#Origin_treatment = birdy, Year = 2021:
+# Transplant_treatment emmean lower.HPD upper.HPD
+# birdy                  8.33      6.05      9.95
+# ratty                  5.53      3.24      7.49
+
+#Origin_treatment = ratty, Year = 2021:
+# Transplant_treatment emmean lower.HPD upper.HPD
+# birdy                  7.99      5.91      9.76
+# ratty                  5.39      3.14      7.08
+
+
+rte_n15_mod %>% 
+  emmeans(~ Origin_treatment|Transplant_treatment*Year,
+          type = "response")
+#same results as above, just different order
+
+
+rte_n15_mod %>% 
+  emmeans(~ Transplant_treatment|Origin_treatment*Year)%>%
+  contrast("pairwise")
+
+#Origin_treatment = birdy, Year = 2018:
+# contrast      estimate lower.HPD upper.HPD
+## birdy - ratty    0.275    -0.726     1.390
+
+#Origin_treatment = ratty, Year = 2018:
+# contrast      estimate lower.HPD upper.HPD
+# birdy - ratty    0.110    -0.629     0.853
+
+#Origin_treatment = birdy, Year = 2019:
+# contrast      estimate lower.HPD upper.HPD
+# birdy - ratty    1.497     0.375     2.498
+
+#Origin_treatment = ratty, Year = 2019:
+# contrast      estimate lower.HPD upper.HPD
+# birdy - ratty    1.319     0.565     2.079
+
+#Origin_treatment = birdy, Year = 2021:
+ #contrast      estimate lower.HPD upper.HPD
+ #birdy - ratty    2.769     1.641     3.877
+
+#Origin_treatment = ratty, Year = 2021:
+# contrast      estimate lower.HPD upper.HPD
+# birdy - ratty    2.606     1.566     3.539
+
+
+rte_n15_mod %>% 
+  emmeans(~ Origin_treatment|Transplant_treatment*Year)%>%
+  contrast("pairwise")
+
+#Transplant_treatment = birdy, Year = 2018:
+# contrast      estimate lower.HPD upper.HPD
+# birdy - ratty    1.553     0.718      2.42
+
+#Transplant_treatment = ratty, Year = 2018:
+# contrast      estimate lower.HPD upper.HPD
+# birdy - ratty    1.378     0.180      2.55
+
+#Transplant_treatment = birdy, Year = 2019:
+# contrast      estimate lower.HPD upper.HPD
+# birdy - ratty    0.705    -0.151      1.59
+
+#Transplant_treatment = ratty, Year = 2019:
+# contrast      estimate lower.HPD upper.HPD
+# birdy - ratty    0.535    -0.609      1.71
+
+#Transplant_treatment = birdy, Year = 2021:
+# contrast      estimate lower.HPD upper.HPD
+# birdy - ratty    0.328    -0.671      1.26
+
+#Transplant_treatment = ratty, Year = 2021:
+# contrast      estimate lower.HPD upper.HPD
+# birdy - ratty    0.169    -1.197      1.35
+
+
+rte_n15_mod %>% 
+  emmeans(~ Transplant_treatment|Year) %>%
+  contrast("pairwise")
+
+#Year = 2018:
+# contrast      estimate lower.HPD upper.HPD
+# birdy - ratty    0.193    -0.527     0.964
+
+#Year = 2019:
+# contrast      estimate lower.HPD upper.HPD
+# birdy - ratty    1.410     0.680     2.191
+
+#Year = 2021:
+# contrast      estimate lower.HPD upper.HPD
+# birdy - ratty    2.693     1.745     3.556
+#Results are averaged over the levels of: Origin_treatment 
+
+
+rte_n15_mod %>% 
+  emmeans(~Origin_treatment|Year) %>%
+  contrast("pairwise")
+
+#Year = 2018:
+ #contrast      estimate lower.HPD upper.HPD
+# birdy - ratty    1.468     0.572      2.32
+
+#Year = 2019:
+# contrast      estimate lower.HPD upper.HPD
+# birdy - ratty    0.623    -0.237      1.53
+
+#Year = 2021:
+# contrast      estimate lower.HPD upper.HPD
+# birdy - ratty    0.245    -0.770      1.20
+
+#Results are averaged over the levels of: Transplant_treatment 
+
+
+rte_n15_mod %>% 
+  emmeans(~Transplant_treatment|Year) 
+
+#Year = 2018:
+# Transplant_treatment emmean lower.HPD upper.HPD
+# birdy                  6.82      4.81      8.51
+# ratty                  6.63      4.49      8.32
+
+#Year = 2019:
+# Transplant_treatment emmean lower.HPD upper.HPD
+# birdy                  7.31      5.10      8.89
+# ratty                  5.90      3.61      7.50
+
+#Year = 2021:
+# Transplant_treatment emmean lower.HPD upper.HPD
+# birdy                  8.17      5.97      9.72
+# ratty                  5.46      3.23      7.18
+
+#Results are averaged over the levels of: Origin_treatment 
+
+rte_n15_mod %>% 
+  emmeans(~Origin_treatment|Year) 
+#Year = 2018:
+# Origin_treatment emmean lower.HPD upper.HPD
+## birdy            7.45      5.24      9.09
+# ratty              6.00      3.84      7.59
+
+#Year = 2019:
+# Origin_treatment emmean lower.HPD upper.HPD
+# birdy              6.91      4.76      8.66
+# ratty              6.30      4.26      8.05
+
+#Year = 2021:
+# Origin_treatment emmean lower.HPD upper.HPD
+# birdy              6.93      4.88      8.78
+ #ratty              6.69      4.53      8.37
+
+#Results are averaged over the levels of: Transplant_treatment 
+
+
+##percent difference:----
+#origin in year 2018
+(7.45 -6.00 )/6.00 #birdy was 0.2416667 higher than ratty
+
+#transplant in year 2021:
+ (8.17 - 5.46)/5.46 #birdy was 0.496337 higher than ratty
+
+
+####plots-----
+rte_n15_pred_plot<-
+#fix colors, etc:
+rte_n15_mod %>% 
+  epred_draws(newdata = expand_grid(Transplant_treatment = c("birdy", "ratty"),
+                                    Origin_treatment = c("birdy", "ratty"),
+                                    Year = c("2018", "2019", "2021")), 
+                  re_formula=NA)%>%
+  mutate(Origin_transplant = str_c(Origin_treatment, Transplant_treatment, sep ="_"))%>%
+  mutate(Year = as.factor(Year),
+         Origin_treatment = as.factor(Origin_treatment),
+         Transplant_treatment = as.factor(Transplant_treatment),
+         Origin_transplant = as.factor(Origin_transplant))%>%
+  ggplot(aes(x = Year, y = .epred, color = Origin_transplant, fill = Origin_transplant)) +
+  stat_eye(point_interval=median_hdi, .width=c(.9,.7), fatten_point = 2, slab_alpha = 0.6, 
+           position=position_dodge(width = .9)) +
+  geom_vline(xintercept = c(1.5,2.5), linetype = 2, alpha = .5)+
+  scale_color_manual(values = c("#0067A5", "#A1CAF1", "#F99379", "#BE0032"),
+                     guide = "none")+
+  scale_fill_manual(values = c("#0067A5", "#A1CAF1", "#F99379", "#BE0032"),
+                    name = "",
+                                            breaks=c("birdy_birdy",  "ratty_birdy", "birdy_ratty",  "ratty_ratty"),
+                       labels=c("seabird to seabird", "rat to seabird", "seabird to rat", "rat to rat")
+                    )+ #light blue = #A1CAF1, light red/pink = #F99379, orange = #F38400, purple = #875692
+  xlab("Experiment Year")+
+  scale_x_discrete(labels = c('0','1','3'))+
+  ylab(expression(symbiont~delta^15~N))+
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), # remove gridlines
+        panel.grid.minor = element_blank(), #remove gridlines
+        strip.background = element_blank(), 
+        legend.position = c(.9,.9),  
+      #  legend.title=element_blank(),
+        rect = element_rect(fill = "transparent"),  
+        plot.background = element_rect(fill = "transparent", color = NA),
+        text=element_text(size=16,  family="Arial"),
+         legend.text=element_text(size=10),
+        axis.title.y = element_text(size=16, face="bold")) 
+
+rte_n15_pred_plot
+
+
+```
+
+
+
+
+
+
+#combine plots
+```{r}
+
+pred_symb_island_plot
+rte_n15_pred_plot
+
+island_n15_plots<-plot_grid(
+  plot_grid(NULL, pred_symb_island_plot, NULL, nrow = 1, rel_widths = c(0.8, 1, 0.8)),
+  plot_grid(rte_n15_pred_plot, nrow = 1),
+  nrow = 2, labels = "auto", rel_heights = c(.8, 1), label_x = c(.38, .08), label_y = c(.99, .99), label_fontface = "plain"
+)
+  
+island_n15_plots
+
+ggsave(filename = "../output/figures/island_n15_plots.jpg", 
+       plot = island_n15_plots,
+       width = 8,
+       height = 7,
+       units = "in",
+      dpi = 300)
+```

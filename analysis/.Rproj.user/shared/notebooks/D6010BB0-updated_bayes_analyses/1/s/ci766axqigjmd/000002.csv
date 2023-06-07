@@ -1,0 +1,81 @@
+"0","```r
+#library(plyr) #for dcast function - load plyr before dplyr to avoid problems
+library(reshape2) #for dcast
+library(dplyr)
+```"
+"1","
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+"
+"0","```r
+library(tidyverse) #for everything
+```"
+"1","Registered S3 methods overwritten by 'dbplyr':
+  method         from
+  print.tbl_lazy     
+  print.tbl_sql      
+── Attaching packages ─────────────────────────────────────────────────────────────────────────── tidyverse 1.3.1 ──
+✓ ggplot2 3.3.5     ✓ purrr   0.3.4
+✓ tibble  3.1.4     ✓ stringr 1.4.0
+✓ tidyr   1.1.3     ✓ forcats 0.5.1
+✓ readr   2.0.1     
+── Conflicts ────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+x dplyr::filter() masks stats::filter()
+x dplyr::lag()    masks stats::lag()
+"
+"0","```r
+#for bayes models
+library(brms)
+```"
+"1","Loading required package: Rcpp
+Registered S3 method overwritten by 'htmlwidgets':
+  method           from         
+  print.htmlwidget tools:rstudio
+Loading 'brms' package (version 2.16.2). Useful instructions
+can be found by typing help('brms'). A more detailed introduction
+to the package is available through vignette('brms_overview').
+
+Attaching package: ‘brms’
+
+The following object is masked from ‘package:stats’:
+
+    ar
+"
+"0","```r
+library(tidybayes)
+```"
+"1","
+Attaching package: ‘tidybayes’
+
+The following objects are masked from ‘package:brms’:
+
+    dstudent_t, pstudent_t, qstudent_t, rstudent_t
+"
+"0","```r
+library(jtools)
+library(modelr) #for data_grid function
+
+library(cowplot) #for combining plots
+
+#for path analysis
+library(lavaan)
+```"
+"1","This is lavaan 0.6-9
+lavaan is FREE software! Please report any bugs.
+"
+"0","```r
+library(semPlot)
+```"
+"1","Registered S3 method overwritten by 'data.table':
+  method           from
+  print.data.table     
+Error: package or namespace load failed for ‘semPlot’ in loadNamespace(i, c(lib.loc, .libPaths()), versionCheck = vI[[i]]):
+ there is no package called ‘OpenMx’
+"

@@ -1,0 +1,287 @@
+---
+title: "coral_size_distribution"
+author: "CEB"
+date: '2023-05-04'
+output: html_document
+---
+
+
+#load packages
+```{r}
+library(tidyverse)
+library(vegan)
+library(cowplot)
+library(lme4)
+library(brms)
+library(car)
+library(jtools)
+library(tidybayes)
+library(emmeans)
+
+```
+
+
+
+#load data
+```{r}
+
+#size data:----
+load("../data/R_data/coral_size_distn_2021.Rdata")
+
+acrop_size_21_dat_dens
+coral_size_21_dat_dens
+
+
+
+```
+
+
+#Acropora size model
+```{r}
+#set prior:
+acrop_size_pr<-
+    set_prior("normal(2, 1)", class = "Intercept") + #based on mean growth from previous studies = 4, along with max and min
+    set_prior("normal(0, 1)", class = "b")
+
+#run model: 
+acrop_size_mod<- 
+ brm(bf(log(Max_length_cm) ~ Treatment + (1|Atoll/Island),
+        sigma ~ Treatment + (1|Atoll/Island),
+        alpha ~ Treatment + (1|Atoll/Island)),
+      data = acrop_size_21_dat_dens, family = skew_normal(),
+       iter = 3000, warmup = 1000, chains = 4, cores = 4,
+      control = list(adapt_delta = 0.999, max_treedepth = 15),
+           sample_prior="yes",
+     prior = acrop_size_pr,
+      file = "../output/brms/acrop_size_mod") 
+print(acrop_size_mod)
+
+
+pp_check(acrop_size_mod)
+plot(acrop_size_mod, ask = FALSE)
+
+
+#extract output: 
+acrop_size_mod.rg <- update(ref_grid(acrop_size_mod), tran = "log") #for median size
+
+#times difference:
+acrop_size_mod.rg %>%
+  emmeans("Treatment", 
+        type="response")%>% 
+  contrast("revpairwise")
+#  Ratty / Birdy  1.09      0.74      1.47 
+
+#absolute difference (on log scale):
+acrop_size_mod.rg %>%
+  emmeans("Treatment")%>% 
+  contrast("revpairwise")
+# Ratty - Birdy   0.0854    -0.256     0.424
+
+#sigma times difference:
+acrop_size_mod%>%
+  emmeans("Treatment", dpar = "sigma", type = "response")%>%
+  contrast("revpairwise")
+#Ratty / Birdy 0.999     0.767      1.24
+
+#sigma absolute difference:
+acrop_size_mod%>%
+  emmeans("Treatment", dpar = "sigma")%>%
+  contrast("revpairwise")
+# Ratty - Birdy -0.00115     -0.25     0.222
+
+
+#alpha absolute difference:
+acrop_size_mod %>%
+  emmeans("Treatment", dpar = "alpha")%>% 
+  contrast("revpairwise")
+# Ratty - Birdy   -1.23     -5.12       2.5
+
+#alpha estimates: 
+acrop_size_mod %>%
+  emmeans("Treatment", dpar = "alpha")
+# Birdy     -0.0489     -2.93      3.51
+# Ratty      -1.2233     -4.61      2.33
+
+```
+
+###Plot Acropora model
+```{r}
+#plot: 
+acrop_size_pred<-
+   acrop_size_mod   %>%  #acrop_size_mod_skew2 acrop_size_prior_mod acrop_size_mod
+  emmeans(~ Treatment,
+          epred = TRUE,
+          re_formula = NA) %>% 
+  gather_emmeans_draws() 
+
+
+acrop_size_distn_plot<-
+acrop_size_pred %>%
+  mutate(.value = exp(.value))%>%
+  ggplot(aes(x = .value, y = 1, color = Treatment, fill = Treatment)) +
+  stat_halfeye(point_interval=median_hdi,  .width=c(.9, .7),  fatten_point = 2, slab_alpha = 0.6) +
+ # geom_vline(xintercept = 0, linetype = "dashed") +
+  theme_bw() + 
+   scale_x_continuous(trans = "log10", limits = c(0.5, 200)) +
+  ylab("posterior density")+
+  xlab("log Acropora colony size")+
+   # xlim(c(0,100))+ ##lots of draws containing extreme values**
+  theme(panel.grid.major = element_blank(), # remove gridlines
+        panel.grid.minor = element_blank(), #remove gridlines
+        strip.background = element_blank(), 
+        axis.text.y = element_blank(), 
+        axis.ticks.y = element_blank(), 
+        legend.position = c(.3, .9),  
+        rect = element_rect(fill = "transparent"),  
+        plot.background = element_rect(fill = "transparent", color = NA),
+        text=element_text(size=16,  family="Arial")) +
+scale_color_manual(values = c("#0067A5",  "#BE0032"),
+                     guide = "none")+
+  scale_fill_manual(values = c("#0067A5", "#BE0032"),
+                    name = "",
+                                            breaks=c("Birdy",  "Ratty"),
+                       labels=c("seabird islands", "rat islands"))
+acrop_size_distn_plot
+
+
+```
+
+
+#Run size model for all corals: 
+```{r}
+#set prior: 
+coral_size_pr<-
+    set_prior("normal(2.4, 1)", class = "Intercept") + #based on previous studies, mean log(size) = 2.4
+    set_prior("normal(0, 1)", class = "b")
+
+#run model: 
+coral_size_mod<- 
+ brm(bf(log(Max_length_cm)  ~ Treatment + (1|Atoll/Island),
+        sigma ~ Treatment + (1|Atoll/Island),
+        alpha ~ Treatment + (1|Atoll/Island)),
+      data = coral_size_21_dat_dens, family = skew_normal(),
+       iter = 3000, warmup = 1000, chains = 4, cores = 4,
+      control = list(adapt_delta = 0.999, max_treedepth = 15),
+     init = 0, prior = coral_size_pr,
+           sample_prior="yes",
+      file = "../output/brms/coral_size_mod") 
+print(coral_size_mod) #only 1 divergent trans - go with it!!!
+
+pp_check(coral_size_mod)
+plot(coral_size_mod, ask = FALSE)
+
+#extract output: 
+coral_size_mod.rg <- update(ref_grid(coral_size_mod), tran = "log") #for median size
+
+#median times difference:
+coral_size_mod.rg %>%
+  emmeans("Treatment", 
+        type="response")%>% #
+  contrast("revpairwise")
+# Ratty - Birdy    1.03      0.65       1.5
+
+
+#absolute difference (on log scale):
+coral_size_mod.rg %>%
+  emmeans("Treatment")%>% #
+  contrast("revpairwise")
+# Ratty - Birdy    0.0297    -0.371      0.45
+
+
+#sigma difference: 
+coral_size_mod %>%
+  emmeans("Treatment", dpar = "sigma")%>%
+  contrast("revpairwise")
+#Ratty - Birdy    0.0291     -0.17     0.214
+
+#sigma times difference: 
+coral_size_mod %>%
+  emmeans("Treatment", dpar = "sigma", type = "response")%>%
+  contrast("revpairwise")
+#Ratty / Birdy  1.03     0.844      1.24
+
+#alpha difference:
+coral_size_mod %>%
+  emmeans("Treatment", dpar = "alpha")%>% 
+  contrast("revpairwise")
+# Ratty - Birdy    -0.622     -2.64      1.58
+
+#alpha estimates:
+coral_size_mod %>%
+  emmeans("Treatment", dpar = "alpha")
+# Birdy     0.6830     -1.40      2.82
+# Ratty     0.0717     -2.03      2.11
+
+
+```
+
+
+###Plot all coral model
+```{r}
+#plot: 
+coral_size_pred<-
+   coral_size_mod   %>% 
+  emmeans(~ Treatment,
+          epred = TRUE,
+          re_formula = NA) %>% 
+  gather_emmeans_draws() 
+
+
+coral_size_distn_plot<-
+coral_size_pred %>%
+  mutate(.value = exp(.value))%>%
+  ggplot(aes(x = .value, y = 1, color = Treatment, fill = Treatment)) +
+  stat_halfeye(point_interval=median_hdi, .width=c(.9, .7), fatten_point = 2, slab_alpha = 0.6) +
+ # geom_vline(xintercept = 0, linetype = "dashed") +
+  theme_bw() + 
+   scale_x_continuous(trans = "log10", limits = c(0.5, 200)) +
+  ylab("posterior density")+
+  xlab("log coral colony size")+
+   # xlim(c(0,100))+ ##lots of draws containing extreme values**
+  theme(panel.grid.major = element_blank(), # remove gridlines
+        panel.grid.minor = element_blank(), #remove gridlines
+        strip.background = element_blank(), 
+        axis.text.y = element_blank(), 
+        axis.ticks.y = element_blank(), 
+        legend.position = c(.3, .9),  
+        rect = element_rect(fill = "transparent"),  
+        plot.background = element_rect(fill = "transparent", color = NA),
+        text=element_text(size=16,  family="Arial")) +
+scale_color_manual(values = c("#0067A5",  "#BE0032"),
+                     guide = "none")+
+  scale_fill_manual(values = c("#0067A5", "#BE0032"),
+                    name = "",
+                                            breaks=c("Birdy",  "Ratty"),
+                       labels=c("seabird islands", "rat islands"))
+coral_size_distn_plot
+
+
+```
+
+
+#combine plots and save:
+```{r}
+
+size_distn_plot<-plot_grid(acrop_size_distn_plot, coral_size_distn_plot, align = "hv", nrow = 1, rel_widths = c(1,1),
+                           labels = "auto", label_fontface = "plain", label_x = .1, label_y = .99)
+size_distn_plot
+
+ggsave(filename = "../output/figures/size_distn_plot.jpg", 
+       plot = size_distn_plot,
+       width = 8,
+       height = 4,
+       units = "in",
+      dpi = 300)
+
+```
+
+
+
+
+
+
+
+
+
+
+

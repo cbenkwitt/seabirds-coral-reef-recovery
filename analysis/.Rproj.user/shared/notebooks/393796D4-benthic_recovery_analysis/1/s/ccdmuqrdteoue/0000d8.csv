@@ -1,0 +1,11 @@
+"0",""
+"0","med_pred_hc<-"
+"0","  benthic_pred %>%"
+"0","    filter(.category==""Hardcoral"")%>%"
+"0","  group_by(Treatment, Year)%>%"
+"0","  summarize(med_prediction = median(.epred))%>%"
+"0","  mutate( Year = as.factor(Year), "
+"0","         Treatment = as.factor(Treatment))"
+"1","[38;5;251m`summarise()` has grouped output by 'Treatment'. You can override using the `.groups` argument.[39m
+"
+"0","med_pred_hc"

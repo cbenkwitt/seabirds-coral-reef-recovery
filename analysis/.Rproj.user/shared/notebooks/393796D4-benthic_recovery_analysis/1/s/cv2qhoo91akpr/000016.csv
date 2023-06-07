@@ -1,0 +1,6 @@
+"0","#benthic data: "
+"0","load(""../data/R_data/benthic_group_data.Rdata"")"
+"0","#broad groups: "
+"0","#uvc_dat_group_trans_wide_prop #broad groups, proportion cover, transect, wide"
+"0","#uvc_dat_group_isl_wide #broad groups, % cover, island-level, wide"
+"0","#benthic_dist_mat_bray_diff_no15 #for dissimilarity analysis - island-level"

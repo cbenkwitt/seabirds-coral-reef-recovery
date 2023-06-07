@@ -1,0 +1,6 @@
+"0",""
+"0","plot(hypothesis(rte_gr_mod_log, c(""Origin_treatmentrlbirdy=0"", "
+"0","                             ""Transplant_treatmentrlbirdy=0"", "
+"0","                              ""Origin_treatmentrlbirdy:Transplant_treatmentrlbirdy=0"","
+"0","                               ""Previous_surface_area_cs=0"")))"
+"0",""
