@@ -1,8 +1,0 @@
-"0","#hard coral separately:----"
-"0","#plot using same technique as benthic: "
-"0","benthic_pred<-"
-"0","  benthic_mod_beta %>% "
-"0","  epred_draws(newdata = expand_grid(Treatment = c(""Ratty"", ""Birdy""),"
-"0","                                    Year = c(""2015"", ""2018"", ""2021"")), "
-"0","                  re_formula=NA)"
-"0","benthic_pred"

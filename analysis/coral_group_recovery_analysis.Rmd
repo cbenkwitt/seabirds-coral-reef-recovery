@@ -192,7 +192,7 @@ pred_acrop_beta %>%
     geom_line(data = med_pred_acrop, aes(x = Year, y =med_prediction, group = Treatment), alpha = .5, position = position_dodge(width = .05))+
  # geom_vline(xintercept = 0, linetype = "dashed") +
  # ylim(c(0,.75))+
-  ylab("proportional Acropora coral cover")+
+  ylab("Proportional Acropora coral cover")+
 scale_color_manual(values = c("#0067A5", "#BE0032"),
                                             breaks=c("Birdy",  "Ratty"),
                       labels=c("seabird islands",  "rat islands"),
@@ -211,7 +211,11 @@ scale_color_manual(values = c("#0067A5", "#BE0032"),
         strip.background = element_blank(), 
         legend.position = c(.5, .9),  
         rect = element_rect(fill = "transparent"),  
-        plot.background = element_rect(fill = "transparent", color = NA)) 
+        plot.background = element_rect(fill = "transparent", color = NA),
+        text=element_text(size=8,  family="sans"),
+         legend.text=element_text(size=8, family = "sans"),
+        axis.title.y = element_text(size=8, family = "sans"),
+        axis.text = element_text(size = 8, family = "sans")) 
 acrop_plot_mult_hdis
 
 ```
@@ -240,6 +244,12 @@ site.sc_coral_group <- scores(nmds_coral_group, display = "sites", shrink = FALS
 site.sc_coral_group
 
 #merge site.sc with metadata from dataframe
+#need combo column: 
+uvc_dat_corals_group_isl_wide_ty<-
+  uvc_dat_corals_group_isl_wide %>%
+  unite("Treatment_Year", c(Treatment, Year), remove = FALSE)%>%
+  relocate(Treatment_Year, .after = Treatment)
+
 nmds_coral_group_site_scores<-
   bind_cols(uvc_dat_corals_group_isl_wide_ty[1:5],
                     as_tibble(site.sc_coral_group))
@@ -300,14 +310,6 @@ uvc_dat_corals_group_isl_wide_ty%>%
 #acropora dominant in all years, but big reductions. Porites shows slight increase. Pocillopora also decrease then increase
 
 
-#if want arrows:
-     # geom_segment(aes(x = -0.1855, y = -0.3036, xend = -0.5829, yend = 0.6873), colour = "#0067A5", linetype=1)+ #from ord.fit
-   # geom_segment(aes(x = -0.5829, y = 0.6873, xend = 0.0565, yend = -0.1825), colour = "#0067A5", linetype=1, arrow =   arrow(length = unit(0.1, "inches")))+ #from ord.fit
-     #   geom_segment(aes(x = 0.2258, y = -.1552, xend = 0.0576, yend = 0.3679), colour = "#BE0032", linetype=1)+ #from ord.fit
-  #  geom_segment(aes(x = 0.0576, y = 0.3679, xend = 0.3409, yend = -0.2380), colour = "#BE0032", linetype=1, arrow =   arrow(length = unit(0.1, "inches")))+ 
-
-
-
 nmds_coral_group_plot<-
 ggplot() + 
  geom_polygon(data=hull.data,aes(x=NMDS1,y=NMDS2,fill=Treatment_Year,group=Treatment_Year, colour = Treatment_Year),alpha = 0.15, linetype=1, lwd = .1) + # add the 
@@ -331,7 +333,7 @@ scale_colour_manual(name = "Year and Treatment",
   theme(panel.grid.major = element_blank(), # remove gridlines
         panel.grid.minor = element_blank(), #remove gridlines
         strip.background = element_blank(), #remove gray boxes
-        text = element_text(size=20),
+        text = element_text(size=12),
         legend.title = element_blank(), #remove legend title
         legend.box.background = element_rect(colour = "black", fill='white', linetype='solid', size=1),
         legend.text=element_text(size=12))

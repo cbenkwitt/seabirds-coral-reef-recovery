@@ -123,8 +123,8 @@ acrop_size_pred %>%
  # geom_vline(xintercept = 0, linetype = "dashed") +
   theme_bw() + 
    scale_x_continuous(trans = "log10", limits = c(0.5, 200)) +
-  ylab("posterior density")+
-  xlab("log Acropora colony size")+
+  ylab("Posterior density")+
+  xlab("Log Acropora colony size")+
    # xlim(c(0,100))+ ##lots of draws containing extreme values**
   theme(panel.grid.major = element_blank(), # remove gridlines
         panel.grid.minor = element_blank(), #remove gridlines
@@ -134,7 +134,11 @@ acrop_size_pred %>%
         legend.position = c(.3, .9),  
         rect = element_rect(fill = "transparent"),  
         plot.background = element_rect(fill = "transparent", color = NA),
-        text=element_text(size=16,  family="Arial")) +
+       # text=element_text(size=16,  family="Arial")
+        text=element_text(size=12,  family="sans"),
+         legend.text=element_text(size=12, family = "sans"),
+        axis.title.y = element_text(size=12, family = "sans"),
+        axis.text = element_text(size = 12, family = "sans")) +
 scale_color_manual(values = c("#0067A5",  "#BE0032"),
                      guide = "none")+
   scale_fill_manual(values = c("#0067A5", "#BE0032"),
@@ -235,8 +239,8 @@ coral_size_pred %>%
  # geom_vline(xintercept = 0, linetype = "dashed") +
   theme_bw() + 
    scale_x_continuous(trans = "log10", limits = c(0.5, 200)) +
-  ylab("posterior density")+
-  xlab("log coral colony size")+
+  ylab("Posterior density")+
+  xlab("Log coral colony size")+
    # xlim(c(0,100))+ ##lots of draws containing extreme values**
   theme(panel.grid.major = element_blank(), # remove gridlines
         panel.grid.minor = element_blank(), #remove gridlines
@@ -246,7 +250,11 @@ coral_size_pred %>%
         legend.position = c(.3, .9),  
         rect = element_rect(fill = "transparent"),  
         plot.background = element_rect(fill = "transparent", color = NA),
-        text=element_text(size=16,  family="Arial")) +
+       # text=element_text(size=16,  family="Arial"),       
+        text=element_text(size=12,  family="sans"),
+         legend.text=element_text(size=12, family = "sans"),
+        axis.title.y = element_text(size=12, family = "sans"),
+        axis.text = element_text(size = 12, family = "sans")) +
 scale_color_manual(values = c("#0067A5",  "#BE0032"),
                      guide = "none")+
   scale_fill_manual(values = c("#0067A5", "#BE0032"),
@@ -263,7 +271,8 @@ coral_size_distn_plot
 ```{r}
 
 size_distn_plot<-plot_grid(acrop_size_distn_plot, coral_size_distn_plot, align = "hv", nrow = 1, rel_widths = c(1,1),
-                           labels = "auto", label_fontface = "plain", label_x = .1, label_y = .99)
+                           labels = "AUTO", label_fontface = "bold", label_x = .09, label_y = .97,
+                           label_size = 13, label_fontfamily = "sans")
 size_distn_plot
 
 ggsave(filename = "../output/figures/size_distn_plot.jpg", 
@@ -271,7 +280,7 @@ ggsave(filename = "../output/figures/size_distn_plot.jpg",
        width = 8,
        height = 4,
        units = "in",
-      dpi = 300)
+      dpi = 1200)
 
 ```
 

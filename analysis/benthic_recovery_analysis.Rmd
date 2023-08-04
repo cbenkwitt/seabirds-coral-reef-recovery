@@ -398,7 +398,7 @@ benthic_pred %>%
       geom_line(data = med_pred_hc, aes(x = Year, y =med_prediction, group = Treatment), alpha = .5, position = position_dodge(width = .05))+
   stat_pointinterval(point_interval=median_hdi, .width=c(.9, .7, .5), fatten_point = 2, interval_alpha = 0.2, position = position_dodge(width = .05)) +
 
-  ylab("proportional hard coral cover")+
+  ylab("Proportional hard coral cover")+
 scale_color_manual(values = c("#0067A5", "#BE0032"),
                                             breaks=c("Birdy",  "Ratty"),
                       labels=c("seabird islands",  "rat islands"),
@@ -417,7 +417,11 @@ scale_color_manual(values = c("#0067A5", "#BE0032"),
         strip.background = element_blank(), 
         legend.position = c(.5, .9),  
         rect = element_rect(fill = "transparent"),  
-        plot.background = element_rect(fill = "transparent", color = NA)) 
+        plot.background = element_rect(fill = "transparent", color = NA),
+        text=element_text(size=8,  family="sans"),
+         legend.text=element_text(size=8, family = "sans"),
+        axis.title.y = element_text(size=8, family = "sans"),
+        axis.text = element_text(size = 8, family = "sans")) 
 hard_coral_plot
 
 
@@ -433,7 +437,7 @@ med_pred_nohc
 
 #for labels:
 ann_text <- data.frame(Year = "2021",.epred = .7, Treatment = "",
-                       lab = c("b. CCA", "c. Halimeda", "d. Pavement", "e. Rubble"),
+                       lab = c("B. CCA", "C. Halimeda", "D. Pavement", "E. Rubble"),
                        .category = factor(c("CCA","Halimeda","Pavement", "Rubble"), 
                                           levels = c("CCA","Halimeda","Pavement", "Rubble")))
 benthic_plot<-
@@ -458,8 +462,8 @@ benthic_pred %>%
                       labels=c("seabird islands",  "rat islands"),
                     name = "" )+
   xlab("Year")+
-  ylab("proportional cover")+
-  geom_text(data = ann_text,label = ann_text$lab)+ #, hjust = 1
+  ylab("Proportional cover")+
+  geom_text(data = ann_text,label = ann_text$lab, size = 9/.pt, family = "sans", fontface = "bold")+ #, hjust = 1
   theme_bw() + 
   theme(panel.grid.major = element_blank(), # remove gridlines
         panel.grid.minor = element_blank(), #remove gridlines
@@ -467,8 +471,10 @@ benthic_pred %>%
         legend.position = "none",  
         rect = element_rect(fill = "transparent"),  
         plot.background = element_rect(fill = "transparent", color = NA),
-        text=element_text(size=16,  family="Arial"),
-        axis.title.y = element_text(size=16, family="Arial"),
+        text=element_text(size=8,  family="sans"),
+         legend.text=element_text(size=8, family = "sans"),
+        axis.title.y = element_text(size=8, family = "sans"),
+        axis.text = element_text(size = 8, family = "sans"),
         strip.text = element_blank()) 
 
 benthic_plot
@@ -583,7 +589,7 @@ ggplot() +
   theme(panel.grid.major = element_blank(), # remove gridlines
         panel.grid.minor = element_blank(), #remove gridlines
         strip.background = element_blank(), #remove gray boxes
-        text = element_text(size=20),
+        text = element_text(size=12),
         legend.title = element_blank(), #remove legend title
         legend.box.background = element_rect(colour = "black", fill='white', linetype='solid', size=1),
         legend.text=element_text(size=12))
@@ -694,17 +700,20 @@ scale_color_manual(values = c("#0067A5", "#BE0032"),
                       labels=c("seabird islands",  "rat islands"),
                     name = "" )+
   xlab("")+
-  ylab("distance to 2015")+
+  ylab("Distance to 2015")+
 #design:  
 theme_bw() + 
   theme(panel.grid.major = element_blank(), # remove gridlines
         panel.grid.minor = element_blank(), #remove gridlines
         strip.background = element_blank(), 
         axis.ticks.y = element_blank(),
-        text = element_text(size = 14),
-        legend.position = c(.83,.95),  
+        legend.position = c(.85,.92),  
         rect = element_rect(fill = "transparent"),  
-        plot.background = element_rect(fill = "transparent", color = NA))
+        plot.background = element_rect(fill = "transparent", color = NA),
+        text=element_text(size=8,  family="sans"),
+         legend.text=element_text(size=8, family = "sans"),
+        axis.title.y = element_text(size=8, family = "sans"),
+        axis.text = element_text(size = 8, family = "sans"))
 
 dist_2015_bray_mod_plus_raw_plot
 
@@ -726,18 +735,28 @@ hard_coral_plot
 coral_recruit_cover_plot<-plot_grid(acrop_recruit_plot_mult_hdis, acrop_plot_mult_hdis,
                                     all_recruit_plot_mult_hdis, hard_coral_plot,
                                     nrow=2, rel_widths = c(.6, 1, .6, 1), 
-                                    labels = "auto", label_x = c(.15, .1, .15, .1), 
-                                    label_y = c(.99, .99, .99, .99), label_fontface = "plain")
+                                    labels = "AUTO", label_x = c(.15, .1, .15, .1), 
+                                    label_y = c(.96, .96, .96, .96), label_fontface = "bold", label_size = 9, label_fontfamily = "sans")
 coral_recruit_cover_plot
 
 
-ggsave(filename = "../output/figures/coral_recruit_cover_plot.jpg", 
-       plot = coral_recruit_cover_plot,
-       width = 8,
-       height = 6,
-       units = "in",
-      dpi = 300)
+#ggsave(filename = "../output/figures/coral_recruit_cover_plot.jpg", 
+#       plot = coral_recruit_cover_plot,
+##       width = 8,
+#       height = 6,
+#       units = "in",
+#      dpi = 300)
 
+
+#sci advances:
+ggsave(filename = "../output/figures/coral_recruit_cover_plots.pdf", 
+       plot = coral_recruit_cover_plot,
+       width = 7.25,
+       height = 5.25,
+       units = "in",
+       family = "sans",
+       useDingbats=FALSE,
+      dpi = 1200)
 
 ```
 
@@ -752,20 +771,31 @@ benthic_distance_cover_plot<-plot_grid(
   plot_grid(NULL, dist_2015_bray_mod_plus_raw_plot, NULL, nrow = 1, rel_widths = c(0.33, 1, 0.33)),
   plot_grid(benthic_plot),
   nrow = 2,
-  labels = "a.", rel_heights = c(.65, 1), label_x = .27, label_y =.99, label_fontface = "plain", label_size=12
+  labels = "A", rel_heights = c(.65, 1), label_x = .27, label_y =.97, label_fontface = "bold", label_size=9, label_fontfamily = "sans"
 )
 benthic_distance_cover_plot
 
 
+#ggsave(filename = "../output/figures/benthic_distance_cover_plot.jpg", 
+#       plot = benthic_distance_cover_plot,
+#       width = 8,
+#       height = 8,
+#       units = "in",
+#      dpi = 300)
 
-ggsave(filename = "../output/figures/benthic_distance_cover_plot.jpg", 
+#sci advances:
+ggsave(filename = "../output/figures/benthic_distance_cover_plot.pdf", 
        plot = benthic_distance_cover_plot,
-       width = 8,
-       height = 8,
+       width = 7.25,
+       height = 7.25,
        units = "in",
-      dpi = 300)
+       family = "sans",
+       useDingbats=FALSE,
+      dpi = 1200)
 
 ```
+
+
 
 ##combine nmds plots (supp fig)
 ```{r}
@@ -777,8 +807,8 @@ nmds_coral_group_plot
 
 nmds_plots<-plot_grid(nmds_coral_group_plot, nmds_benth_plot,
                                     nrow=2,axis = "l", align = "hv",
-                                    labels = "auto", label_x = c(.12, .12), 
-                                    label_y = c(.99, .99), label_fontface = "plain")
+                                    labels = "AUTO", label_x = c(.1, .1), 
+                                    label_y = c(.98, .98), label_fontface = "bold")
 nmds_plots
 
 
@@ -787,7 +817,7 @@ ggsave(filename = "../output/figures/nmds_plots.jpg",
        width = 7,
        height = 8,
        units = "in",
-      dpi = 300)
+      dpi = 1200)
 
 
 ```

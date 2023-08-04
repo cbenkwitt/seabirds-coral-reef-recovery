@@ -221,8 +221,8 @@ individual_isotope_growth_combined_cs_data %>%
                     name = "",
                                             breaks=c( "RTE", "Natural"),
                        labels=c("experimental colony", "natural colony"))+
-    xlab(expression(symbiont~delta^15~N))+
-      ylab(expression(paste("coral growth rate (log(cm"^"2"*"year"^"-1"*"))")))+
+    xlab(expression(Symbiont~delta^15~N))+
+      ylab(expression(paste("Coral growth rate (log(cm"^"2"*"year"^"-1"*"))")))+
  # scale_y_continuous(trans = "log10")+ #don't want to actually transform axis, just change labels   scale_y_continuous(trans = "log10")+
     guides(size = "none") + 
     theme_bw() + 
@@ -231,7 +231,11 @@ individual_isotope_growth_combined_cs_data %>%
         strip.background = element_blank(), 
         legend.position = c(.3,.9),
         rect = element_rect(fill = "transparent"),  
-        plot.background = element_rect(fill = "transparent", color = NA)) 
+        plot.background = element_rect(fill = "transparent", color = NA),
+              text=element_text(size=8,  family="sans"),
+         legend.text=element_text(size=8, family = "sans"),
+        axis.title = element_text(size=8, family = "sans"),
+        axis.text = element_text(size = 8, family = "sans")) 
 
 iso_gr_rte_line_plot
 

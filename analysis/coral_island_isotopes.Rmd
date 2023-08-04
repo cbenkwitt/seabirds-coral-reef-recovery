@@ -143,10 +143,10 @@ pred_symb_island_plot<-
   stat_eye(point_interval=median_hdi, .width= c(.9,.7), fatten_point = 2, slab_alpha = 0.6) +
     scale_color_manual(values = c("#0067A5", "#BE0032", "#F3C300"))+
   scale_fill_manual(values = c("#0067A5", "#BE0032", "#F3C300"))+
-  scale_x_discrete(labels = c('seabird','rat','no island'))+
+  scale_x_discrete(labels = c('Seabird','Rat','No island'))+
   xlab("")+
   #ylab("Symbiont \u03B4 N")+
-  ylab(expression(symbiont~delta^15~N))+
+  ylab(expression(Symbiont~delta^15~N))+
   theme_bw() + 
   theme(panel.grid.major = element_blank(), # remove gridlines
         panel.grid.minor = element_blank(), #remove gridlines
@@ -154,8 +154,9 @@ pred_symb_island_plot<-
         legend.position = "none",  
         rect = element_rect(fill = "transparent"),  
         plot.background = element_rect(fill = "transparent", color = NA),
-        text=element_text(size=16,  family="Arial"),
-        axis.title.y = element_text(size=16, family="Arial")) 
+        text=element_text(size=8,  family="sans"),
+        axis.title.y = element_text(size=8, family="sans"),
+        axis.text = element_text(size = 8, family="sans")) 
  
 
 pred_symb_island_plot
@@ -417,21 +418,25 @@ rte_n15_mod %>%
                     name = "",
                                             breaks=c("birdy_birdy",  "ratty_birdy", "birdy_ratty",  "ratty_ratty"),
                        labels=c("seabird to seabird", "rat to seabird", "seabird to rat", "rat to rat")
-                    )+ #light blue = #A1CAF1, light red/pink = #F99379, orange = #F38400, purple = #875692
-  xlab("Experiment Year")+
+                   )+ #light blue = #A1CAF1, light red/pink = #F99379, orange = #F38400, purple = #875692
+  xlab("Experiment year")+
   scale_x_discrete(labels = c('0','1','3'))+
-  ylab(expression(symbiont~delta^15~N))+
+  ylab(expression(Symbiont~delta^15~N))+
+  #guides(fill = guide_legend(override.aes = list(size = 0.5)), colour = 'none')+
   theme_bw() + 
   theme(panel.grid.major = element_blank(), # remove gridlines
         panel.grid.minor = element_blank(), #remove gridlines
         strip.background = element_blank(), 
+        legend.key.size = unit(.9,"line"),
         legend.position = c(.9,.9),  
       #  legend.title=element_blank(),
         rect = element_rect(fill = "transparent"),  
         plot.background = element_rect(fill = "transparent", color = NA),
-        text=element_text(size=16,  family="Arial"),
-         legend.text=element_text(size=10),
-        axis.title.y = element_text(size=16, face="bold")) 
+        text=element_text(size=8,  family="sans"),
+         legend.text=element_text(size=8),
+        axis.title.y = element_text(size=8, family = "sans"),
+        axis.text = element_text(size = 8)) 
+
 
 rte_n15_pred_plot
 
@@ -452,15 +457,29 @@ rte_n15_pred_plot
 island_n15_plots<-plot_grid(
   plot_grid(NULL, pred_symb_island_plot, NULL, nrow = 1, rel_widths = c(0.8, 1, 0.8)),
   plot_grid(rte_n15_pred_plot, nrow = 1),
-  nrow = 2, labels = "auto", rel_heights = c(.8, 1), label_x = c(.38, .08), label_y = c(.99, .99), label_fontface = "plain"
+  nrow = 2, labels = "AUTO",  rel_heights = c(.8, 1), 
+  label_x = c(.37, .07), label_y = c(.96, .96), 
+  label_fontface = "bold", label_size = 9, label_fontfamily = "sans"
 )
   
 island_n15_plots
 
-ggsave(filename = "../output/figures/island_n15_plots.jpg", 
+#ggsave(filename = "../output/figures/island_n15_plots.jpg", 
+#       plot = island_n15_plots,
+#       width = 8,
+#       height = 7,
+#       units = "in",
+#      dpi = 300)
+
+
+#sci advances:
+ggsave(filename = "../output/figures/island_n15_plots.pdf", 
        plot = island_n15_plots,
-       width = 8,
-       height = 7,
+       width = 7.25,
+       height = 6,
        units = "in",
-      dpi = 300)
+       family = "sans",
+       useDingbats=FALSE,
+      dpi = 1200)
+
 ```

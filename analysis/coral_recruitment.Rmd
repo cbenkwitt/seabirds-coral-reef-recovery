@@ -144,7 +144,7 @@ scale_color_manual(values = c("#0067A5", "#BE0032"),
                       labels=c("seabird islands",  "rat islands"),
                     name = "" )+
   xlab("")+
-    scale_x_discrete(labels = c('seabird islands','rat islands'))+
+    scale_x_discrete(labels = c('Seabird islands','Rat islands'))+
   scale_y_continuous(breaks = c(0,1,2))+
   theme_bw() + 
   theme(panel.grid.major = element_blank(), # remove gridlines
@@ -152,7 +152,11 @@ scale_color_manual(values = c("#0067A5", "#BE0032"),
         strip.background = element_blank(), 
         legend.position = "none",  
         rect = element_rect(fill = "transparent"),  
-        plot.background = element_rect(fill = "transparent", color = NA)) 
+        plot.background = element_rect(fill = "transparent", color = NA),
+        text=element_text(size=8,  family="sans"),
+         legend.text=element_text(size=8, family = "sans"),
+        axis.title.y = element_text(size=8, family = "sans"),
+        axis.text = element_text(size = 8, family = "sans")) 
 
 acrop_recruit_plot_mult_hdis
 
@@ -215,7 +219,7 @@ pred_all_recruit %>%
   stat_pointinterval(point_interval=median_hdi, .width=c(.9, .7), fatten_point = 2, interval_alpha = 0.2, position = position_dodge(width = .05)) +
  # geom_vline(xintercept = 0, linetype = "dashed") +
  # ylim(c(0,.75))+
-    ylab(expression(paste("coral recruits "*"m"^"-1")))+
+    ylab(expression(paste("Coral recruits "*"m"^"-1")))+
 scale_color_manual(values = c("#0067A5", "#BE0032"),
                                             breaks=c("Birdy",  "Ratty"),
                       labels=c("seabird islands",  "rat islands"),
@@ -229,14 +233,18 @@ scale_color_manual(values = c("#0067A5", "#BE0032"),
                       labels=c("seabird islands",  "rat islands"),
                     name = "" )+
   xlab("")+
-    scale_x_discrete(labels = c('seabird islands','rat islands'))+
+    scale_x_discrete(labels = c('Seabird islands','Rat islands'))+
   theme_bw() + 
   theme(panel.grid.major = element_blank(), # remove gridlines
         panel.grid.minor = element_blank(), #remove gridlines
         strip.background = element_blank(), 
         legend.position = "none",  
         rect = element_rect(fill = "transparent"),  
-        plot.background = element_rect(fill = "transparent", color = NA)) 
+        plot.background = element_rect(fill = "transparent", color = NA),
+        text=element_text(size=8,  family="sans"),
+         legend.text=element_text(size=8, family = "sans"),
+        axis.title.y = element_text(size=8, family = "sans"),
+        axis.text = element_text(size = 8, family = "sans")) 
 
 all_recruit_plot_mult_hdis
 

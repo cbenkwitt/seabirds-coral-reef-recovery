@@ -173,17 +173,21 @@ rte_gr_mod_log %>%
                                             breaks=c("birdy_birdy",  "ratty_birdy", "birdy_ratty",  "ratty_ratty"),
                        labels=c("seabird to seabird", "rat to seabird", "seabird to rat", "rat to rat")
                     )+ #light blue = #A1CAF1, light red/pink = #F99379, orange = #F38400, purple = #875692
-    xlab(expression(paste("coral growth rate (log cm"^"2"*"year"^"-1"*")")))+
+    xlab(expression(paste("Coral growth rate (log cm"^"2"*"year"^"-1"*")")))+
   scale_y_continuous(lim=c(-.15,1), breaks = c(0, .5,  1.0))+
-  ylab("posterior probability")+
+  ylab("Posterior probability")+
   theme_bw() + 
   theme(panel.grid.major = element_blank(), # remove gridlines
         panel.grid.minor = element_blank(), #remove gridlines
         strip.background = element_blank(), 
-        legend.position = c(.8, .88),  
+        legend.position = c(.8, .85),  
       # legend.title=element_blank(),
         rect = element_rect(fill = "transparent"),  
-        plot.background = element_rect(fill = "transparent", color = NA)) 
+        plot.background = element_rect(fill = "transparent", color = NA),
+              text=element_text(size=8,  family="sans"),
+         legend.text=element_text(size=8, family = "sans"),
+        axis.title = element_text(size=8, family = "sans"),
+        axis.text = element_text(size = 8, family = "sans")) 
 rte_growth_group_estimates_plot
 
 
@@ -291,15 +295,19 @@ ggplot(aes(x = effect, y = ratio,fill = after_stat(abs(x) > 1), color = after_st
                        labels=c("experimental colony", "natural colony"))+
   xlab("")+ #xlab("seabird vs. rat")+
       guides(fill = "none", color = "none", size = "none") + 
-  scale_x_discrete(labels = c("origin treatment\n(seabird vs rat)", "transplant treatment\n(seabird vs rat)", "natural\n(seabird vs rat)"))+
-  ylab("multiplicative effect of seabirds on coral growth")+
+  scale_x_discrete(labels = c("Origin treatment\n(seabird vs rat)", "Transplant treatment\n(seabird vs rat)", "Natural\n(seabird vs rat)"))+
+  ylab("Multiplicative effect of seabirds on coral growth")+
    theme_bw() + 
   theme(panel.grid.major = element_blank(), # remove gridlines
         panel.grid.minor = element_blank(), #remove gridlines
         strip.background = element_blank(), 
         legend.position = c(.3,.9),
         rect = element_rect(fill = "transparent"),  
-        plot.background = element_rect(fill = "transparent", color = NA)) 
+        plot.background = element_rect(fill = "transparent", color = NA),
+        text=element_text(size=8,  family="sans"),
+         legend.text=element_text(size=8, family = "sans"),
+        axis.title.y = element_text(size=8, family = "sans"),
+        axis.text = element_text(size = 8, family = "sans")) 
 
 growth_emmeans_effect_plot
 
@@ -323,18 +331,28 @@ rte_growth_group_estimates_plot
 
 growth_plots<-plot_grid(iso_gr_rte_line_plot, growth_emmeans_effect_plot, 
                         rte_growth_group_estimates_plot, natural_growth_group_estimates_plot,
-                        labels = "auto", nrow = 2, ncol = 2,
-                        label_x = c(.12, .12, .12, .12), label_y = c(.99, .99, .99, .99),
-                        label_fontface = "plain")
+                        labels = "AUTO", nrow = 2, ncol = 2,
+                        label_x = c(.13, .11, .13, .13), label_y = c(.97, .97, .97, .97),
+                        label_fontface = "bold", label_size = 9, label_fontfamily = "sans")
 growth_plots
 
 
-ggsave(filename = "../output/figures/growth_plots.jpg", 
+#ggsave(filename = "../output/figures/growth_plots.jpg", 
+#       plot = growth_plots,
+#       width = 8,
+#       height = 8,
+#       units = "in",
+#      dpi = 300)
+
+#sci advances:
+ggsave(filename = "../output/figures/growth_plots.pdf", 
        plot = growth_plots,
-       width = 8,
-       height = 8,
+       width = 7.25,
+       height = 7.25,
        units = "in",
-      dpi = 300)
+       family = "sans",
+       useDingbats=FALSE,
+      dpi = 1200)
 
 ```
 

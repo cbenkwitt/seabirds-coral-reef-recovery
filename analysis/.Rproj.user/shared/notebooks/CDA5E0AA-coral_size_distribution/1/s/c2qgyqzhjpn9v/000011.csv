@@ -1,8 +1,0 @@
-"0",""
-"0","ggsave(filename = ""../output/figures/size_distn_plot.jpg"", "
-"0","       plot = size_distn_plot,"
-"0","       width = 8,"
-"0","       height = 4,"
-"0","       units = ""in"","
-"0","      dpi = 300)"
-"0",""

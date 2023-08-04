@@ -117,7 +117,7 @@ natural_growth_mod_log.rg %>%
   emmeans(~ Treatmentrl|Previous_surface_area_cs,
           type = "response") 
 #ratty  58.7 
-#bidy   134.6 
+#birdy   134.6 
 
 
 ```
@@ -143,9 +143,9 @@ natural_growth_mod_log %>%
                     name = "", breaks=c("birdy",  "ratty"),
                        labels=c("seabird", "rat")
                     )+ #light blue = #A1CAF1, light red/pink = #F99379, orange = #F38400, purple = #875692
-    xlab(expression(paste("coral growth rate (log cm"^"2"*"year"^"-1"*")")))+
+    xlab(expression(paste("Coral growth rate (log cm"^"2"*"year"^"-1"*")")))+
   scale_y_continuous(lim=c(-.15,1), breaks = c(0, .5,  1.0))+
-  ylab("posterior probability")+
+  ylab("Posterior probability")+
   theme_bw() + 
   theme(panel.grid.major = element_blank(), # remove gridlines
         panel.grid.minor = element_blank(), #remove gridlines
@@ -153,7 +153,11 @@ natural_growth_mod_log %>%
         legend.position = c(.8, .9),  
       # legend.title=element_blank(),
         rect = element_rect(fill = "transparent"),  
-        plot.background = element_rect(fill = "transparent", color = NA)) 
+        plot.background = element_rect(fill = "transparent", color = NA),
+              text=element_text(size=8,  family="sans"),
+         legend.text=element_text(size=8, family = "sans"),
+        axis.title = element_text(size=8, family = "sans"),
+        axis.text = element_text(size = 8, family = "sans")) 
 
 natural_growth_group_estimates_plot
 
