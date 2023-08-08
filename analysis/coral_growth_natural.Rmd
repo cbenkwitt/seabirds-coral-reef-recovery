@@ -145,7 +145,7 @@ natural_growth_mod_log %>%
                     )+ #light blue = #A1CAF1, light red/pink = #F99379, orange = #F38400, purple = #875692
     xlab(expression(paste("Coral growth rate (log cm"^"2"*"year"^"-1"*")")))+
   scale_y_continuous(lim=c(-.15,1), breaks = c(0, .5,  1.0))+
-  ylab("Posterior probability")+
+  ylab("Posterior density")+
   theme_bw() + 
   theme(panel.grid.major = element_blank(), # remove gridlines
         panel.grid.minor = element_blank(), #remove gridlines

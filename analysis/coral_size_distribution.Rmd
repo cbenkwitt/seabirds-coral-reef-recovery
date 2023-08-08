@@ -118,19 +118,20 @@ acrop_size_pred<-
 acrop_size_distn_plot<-
 acrop_size_pred %>%
   mutate(.value = exp(.value))%>%
-  ggplot(aes(x = .value, y = 1, color = Treatment, fill = Treatment)) +
+  ggplot(aes(x = .value, color = Treatment, fill = Treatment)) +
   stat_halfeye(point_interval=median_hdi,  .width=c(.9, .7),  fatten_point = 2, slab_alpha = 0.6) +
  # geom_vline(xintercept = 0, linetype = "dashed") +
   theme_bw() + 
    scale_x_continuous(trans = "log10", limits = c(0.5, 200)) +
   ylab("Posterior density")+
-  xlab("Log Acropora colony size")+
+  xlab("Acropora colony size (log cm)")+
+    scale_y_continuous(lim=c(0,1), breaks = c(0, .5,  1.0))+
    # xlim(c(0,100))+ ##lots of draws containing extreme values**
   theme(panel.grid.major = element_blank(), # remove gridlines
         panel.grid.minor = element_blank(), #remove gridlines
         strip.background = element_blank(), 
-        axis.text.y = element_blank(), 
-        axis.ticks.y = element_blank(), 
+       # axis.text.y = element_blank(), 
+      #  axis.ticks.y = element_blank(), 
         legend.position = c(.3, .9),  
         rect = element_rect(fill = "transparent"),  
         plot.background = element_rect(fill = "transparent", color = NA),
@@ -234,19 +235,20 @@ coral_size_pred<-
 coral_size_distn_plot<-
 coral_size_pred %>%
   mutate(.value = exp(.value))%>%
-  ggplot(aes(x = .value, y = 1, color = Treatment, fill = Treatment)) +
+  ggplot(aes(x = .value, color = Treatment, fill = Treatment)) +
   stat_halfeye(point_interval=median_hdi, .width=c(.9, .7), fatten_point = 2, slab_alpha = 0.6) +
  # geom_vline(xintercept = 0, linetype = "dashed") +
   theme_bw() + 
    scale_x_continuous(trans = "log10", limits = c(0.5, 200)) +
   ylab("Posterior density")+
-  xlab("Log coral colony size")+
+  xlab("Coral colony size (log cm)")+
+      scale_y_continuous(lim=c(0,1), breaks = c(0, .5,  1.0))+
    # xlim(c(0,100))+ ##lots of draws containing extreme values**
   theme(panel.grid.major = element_blank(), # remove gridlines
         panel.grid.minor = element_blank(), #remove gridlines
         strip.background = element_blank(), 
-        axis.text.y = element_blank(), 
-        axis.ticks.y = element_blank(), 
+       # axis.text.y = element_blank(), 
+        # axis.ticks.y = element_blank(), 
         legend.position = c(.3, .9),  
         rect = element_rect(fill = "transparent"),  
         plot.background = element_rect(fill = "transparent", color = NA),
@@ -271,7 +273,7 @@ coral_size_distn_plot
 ```{r}
 
 size_distn_plot<-plot_grid(acrop_size_distn_plot, coral_size_distn_plot, align = "hv", nrow = 1, rel_widths = c(1,1),
-                           labels = "AUTO", label_fontface = "bold", label_x = .09, label_y = .97,
+                           labels = "AUTO", label_fontface = "bold", label_x = .15, label_y = .98,
                            label_size = 13, label_fontfamily = "sans")
 size_distn_plot
 

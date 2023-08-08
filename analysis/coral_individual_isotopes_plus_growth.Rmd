@@ -154,7 +154,7 @@ individual_isotope_growth_combined_cs_data %>%
                                             breaks=c( "RTE", "Natural"),
                        labels=c("experimental colony", "natural colony"))+
     xlab(expression(symbiont~delta^15~N))+
-      ylab(expression(paste("coral growth rate (log(cm"^"2"*"year"^"-1"*"))")))+
+      ylab(expression(paste("coral growth rate (log cm"^"2"*"year"^"-1"*"))")))+
  # scale_y_continuous(trans = "log10")+ #don't want to actually transform axis, just change labels   scale_y_continuous(trans = "log10")+
     guides(size = "none") + 
     theme(panel.grid.major = element_blank(), # remove gridlines
@@ -212,19 +212,23 @@ individual_isotope_growth_combined_cs_data %>%
     geom_line(data = symb_n15_gr_rte_ce_90_gm_unscale, aes(x = Symbiont_N15, y = estimate__), color = "black", alpha = .9, lwd = 1.2) +
      geom_point(alpha = .8, aes(color = Type, fill = Type, shape = Type), size = 3) + #, size = .8
   scale_color_manual(values = c("#4ac16d", "#1fa187"),
-                     guide = "none")+
-  scale_fill_manual(values = c( "#4ac16d", "#1fa187"),
-                    name = "",
-                                            breaks=c("RTE", "Natural"),
+                     name = "",
+                      breaks=c("RTE", "Natural"),
                        labels=c("experimental colony", "natural colony"))+
-    scale_shape_manual(values = c(24, 21),
+   # scale_color_manual(values = c("black", "black"),
+    #                 guide = "none")+
+#  scale_fill_manual(values = c( "#4ac16d", "#1fa187"),
+ #                   name = "",
+                      #                      breaks=c("RTE", "Natural"),
+                     #  labels=c("experimental colony", "natural colony"))+
+    scale_shape_manual(values = c(16, 17),
                     name = "",
                                             breaks=c( "RTE", "Natural"),
                        labels=c("experimental colony", "natural colony"))+
     xlab(expression(Symbiont~delta^15~N))+
-      ylab(expression(paste("Coral growth rate (log(cm"^"2"*"year"^"-1"*"))")))+
+      ylab(expression(paste("Coral growth rate (log cm"^"2"*"year"^"-1"*")")))+
  # scale_y_continuous(trans = "log10")+ #don't want to actually transform axis, just change labels   scale_y_continuous(trans = "log10")+
-    guides(size = "none") + 
+    guides(size = "none", fill = "none") + 
     theme_bw() + 
   theme(panel.grid.major = element_blank(), # remove gridlines
         panel.grid.minor = element_blank(), #remove gridlines

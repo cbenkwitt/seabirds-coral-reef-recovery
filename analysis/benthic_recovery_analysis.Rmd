@@ -699,14 +699,13 @@ scale_color_manual(values = c("#0067A5", "#BE0032"),
                     breaks=c("Birdy",  "Ratty"),
                       labels=c("seabird islands",  "rat islands"),
                     name = "" )+
-  xlab("")+
-  ylab("Distance to 2015")+
+  xlab("Year")+
+  ylab("Dissimilarity to 2015")+
 #design:  
 theme_bw() + 
   theme(panel.grid.major = element_blank(), # remove gridlines
         panel.grid.minor = element_blank(), #remove gridlines
         strip.background = element_blank(), 
-        axis.ticks.y = element_blank(),
         legend.position = c(.85,.92),  
         rect = element_rect(fill = "transparent"),  
         plot.background = element_rect(fill = "transparent", color = NA),
